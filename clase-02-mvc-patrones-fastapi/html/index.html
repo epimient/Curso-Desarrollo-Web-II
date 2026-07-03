@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clase 02 - MVC, patrones y FastAPI</title>
+  <link rel="stylesheet" href="../../engine/slides.css" />
+</head>
+<body>
+  <main class="deck">
+
+    <section class="slide slide--title is-active" data-slide>
+      <p class="eyebrow">Desarrollo Web II &middot; FastAPI</p>
+      <h1>MVC, patrones y FastAPI</h1>
+      <p class="subtitle">Arquitectura de software, separacion de capas y primeros endpoints con FastAPI.</p>
+      <p class="author">Ing. Eduardo Pimienta</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Objetivos</p>
+      <h2>Al finalizar esta clase podras</h2>
+      <ul>
+        <li>Explicar el patron MVC y como se aplica en FastAPI.</li>
+        <li>Crear tu primer endpoint con FastAPI usando path y query parameters.</li>
+        <li>Usar type hints y Pydantic para validar datos automaticamente.</li>
+        <li>Distinguir los codigos HTTP mas usados y sus significados.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Arquitectura</p>
+      <h2>¿Que es MVC?</h2>
+      <div class="flow">
+        <span class="flow-item" style="color:var(--blue)">Modelo</span>
+        <span class="flow-item" style="color:var(--green)">Vista</span>
+        <span class="flow-item" style="color:var(--orange)">Controlador</span>
+      </div>
+      <p>MVC separa la aplicacion en tres capas: datos (Modelo), presentacion (Vista) y logica de enrutamiento (Controlador).</p>
+      <div class="callout callout--info"><strong>En español simple</strong> Imagina un restaurante: el menu es la Vista (lo que ves), la cocina es el Modelo (donde se prepara la comida) y el mesero es el Controlador (recibe el pedido y lo lleva a cocina).</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">MVC en FastAPI</p>
+      <h2>¿Como se traduce MVC a codigo?</h2>
+      <table>
+        <thead><tr><th>Capa MVC</th><th>En FastAPI</th><th>Ejemplo</th></tr></thead>
+        <tbody>
+          <tr><td>Modelo</td><td>Schemas (Pydantic)</td><td>class Curso(BaseModel)</td></tr>
+          <tr><td>Vista</td><td>JSON response</td><td>return {"curso": "Web II"}</td></tr>
+          <tr><td>Controlador</td><td>Router + funcion</td><td>@router.get("/cursos")</td></tr>
+        </tbody>
+      </table>
+      <p>FastAPI no te obliga a usar MVC, pero su diseno lo fomenta.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Primer endpoint</p>
+      <h2>Hola FastAPI: GET basico</h2>
+      <pre><code>from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+def raiz():
+    return {"mensaje": "Hola mundo"}
+</code></pre>
+      <p><code>@app.get("/")</code> registra una funcion que responde a peticiones GET en la raiz. Todo lo que devuelve la funcion se convierte en JSON automaticamente.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Path parameters</p>
+      <h2>Rutas dinamicas con path parameters</h2>
+      <pre><code>@app.get("/cursos/{curso_id}")
+def obtener_curso(curso_id: int):
+    return {
+        "id": curso_id,
+        "nombre": f"Curso {curso_id}"
+    }
+</code></pre>
+      <p>Las llaves <code>{curso_id}</code> capturan el valor de la URL. FastAPI lo convierte al tipo que declares (int, str, etc.).</p>
+      <div class="callout callout--ok"><strong>Tip</strong> Si pides <code>/cursos/42</code>, FastAPI convierte "42" al entero 42 automaticamente. Si pones texto, devuelve error 422.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Query parameters</p>
+      <h2>Parametros opcionales en la URL</h2>
+      <pre><code>@app.get("/cursos/")
+def listar_cursos(skip: int = 0, limit: int = 10):
+    return {
+        "skip": skip,
+        "limit": limit,
+        "cursos": []
+    }
+</code></pre>
+      <p>Los query parameters son lo que va despues de <code>?</code> en la URL. FastAPI los toma del nombre del parametro de la funcion.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Type hints</p>
+      <h2>Python type hints: la base de FastAPI</h2>
+      <pre><code>def saludar(nombre: str, edad: int) -> str:
+    return f"Hola {nombre}, tienes {edad} anos"
+</code></pre>
+      <p>FastAPI usa los type hints para:</p>
+      <ul>
+        <li>Validar automaticamente los tipos de datos.</li>
+        <li>Generar documentacion OpenAPI.</li>
+        <li>Detectar errores en tiempo de desarrollo.</li>
+      </ul>
+      <div class="callout callout--info"><strong>En español simple</strong> Los type hints le dicen a FastAPI "esto espero recibir". Si llega otra cosa, lo rechaza antes de que toque tu codigo.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Pydantic</p>
+      <h2>Pydantic BaseModel: validacion automatica</h2>
+      <pre><code>from pydantic import BaseModel
+
+class Curso(BaseModel):
+    nombre: str
+    creditos: int
+    activo: bool = True
+</code></pre>
+      <p>Con Pydantic defines la forma de tus datos. FastAPI valida automaticamente que el JSON que llega coincida con el modelo.</p>
+      <div class="callout callout--ok"><strong>Dato</strong> Pydantic es la libreria de validacion de datos mas usada en Python. FastAPI la incluye como dependencia central.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">POST</p>
+      <h2>Crear recursos con POST y Pydantic</h2>
+      <pre><code>@app.post("/cursos", status_code=201)
+def crear_curso(curso: Curso):
+    return {
+        "id": 1,
+        **curso.dict()
+    }
+</code></pre>
+      <p>FastAPI recibe el JSON, lo valida contra el modelo Curso y te lo entrega ya validado. Si falta un campo obligatorio, devuelve 422.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Codigos HTTP</p>
+      <h2>Codigos de estado en endpoints</h2>
+      <div class="flow">
+        <span class="flow-item" style="color:var(--green)">200</span>
+        <span class="flow-item" style="color:var(--blue)">201</span>
+        <span class="flow-item" style="color:var(--orange)">404</span>
+        <span class="flow-item" style="color:var(--red)">422</span>
+      </div>
+      <p>FastAPI te permite definir el codigo HTTP con <code>status_code</code>. El valor default es 200.</p>
+      <pre><code>@app.post("/cursos", status_code=201)
+@app.get("/cursos/{id}", status_code=200)</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Asi NO vs Asi SI</p>
+      <h2>Antipatrones comunes</h2>
+      <div class="comparison">
+        <div>
+          <h3>❌ Asi NO: todo en una funcion</h3>
+          <pre><code>@app.get("/{tipo}/{id}")
+def todo_en_uno(tipo, id):
+    if tipo == "cursos":
+        ...
+    elif tipo == "users":
+        ...</code></pre>
+          <p>Un solo endpoint que hace de todo. Ilegible e imposible de mantener.</p>
+        </div>
+        <div>
+          <h3>✅ Asi SI: un endpoint por recurso</h3>
+          <pre><code>@app.get("/cursos/{id}")
+def obtener_curso(id: int): ...
+
+@app.get("/users/{id}")
+def obtener_user(id: int): ...</code></pre>
+          <p>Cada recurso tiene su propio endpoint. Claro y mantenible.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">response_model</p>
+      <h2>Controlar la respuesta con response_model</h2>
+      <pre><code>class CursoOut(BaseModel):
+    id: int
+    nombre: str
+    creditos: int
+
+@app.get("/cursos/{id}", response_model=CursoOut)
+def obtener_curso(id: int):
+    curso = buscar_en_bd(id)
+    return curso  # se filtra automaticamente
+</code></pre>
+      <p><code>response_model</code> filtra los campos que se devuelven. Sirve para no exponer datos sensibles (ej: contraseñas).</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Troubleshooting</p>
+      <h2>Errores comunes al empezar</h2>
+      <table>
+        <thead><tr><th>Error</th><th>Causa</th><th>Solucion</th></tr></thead>
+        <tbody>
+          <tr><td>422 al enviar datos</td><td>Falta campo obligatorio o tipo incorrecto</td><td>Revisar el modelo Pydantic</td></tr>
+          <tr><td>404 en /docs</td><td>Uvicorn no se ejecuto en la ruta correcta</td><td><code>uvicorn app.main:app --reload</code></td></tr>
+          <tr><td>Los query params no funcionan</td><td>El nombre del parametro no coincide</td><td>Debe llamarse igual en la funcion</td></tr>
+          <tr><td>Error 405 Method Not Allowed</td><td>Usaste POST donde solo hay GET</td><td>Revisar el decorador <code>@app.get()</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Checklist</p>
+      <h2>Al salir de clase</h2>
+      <ul>
+        <li>[ ] Entiendo el patron MVC y su traduccion a FastAPI.</li>
+        <li>[ ] Cree mi primer endpoint con GET y path params.</li>
+        <li>[ ] Use query parameters con valores por defecto.</li>
+        <li>[ ] Defini un modelo Pydantic y lo use en POST.</li>
+        <li>[ ] Configure codigos HTTP y response_model.</li>
+        <li>[ ] Puedo explicar la analogia del restaurante.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Actividad</p>
+      <h2>Mini-proyecto: API de tareas</h2>
+      <ol>
+        <li>Crea una app FastAPI con endpoints GET y POST.</li>
+        <li>Define un modelo Pydantic <code>Tarea</code> con titulo, descripcion y completada.</li>
+        <li>Implementa GET /tareas y POST /tareas.</li>
+        <li>Usa response_model para filtrar campos.</li>
+        <li>Prueba los endpoints en /docs.</li>
+      </ol>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Cierre</p>
+      <h2>Lo que debe quedar claro</h2>
+      <ul>
+        <li>FastAPI usa Python type hints para validacion y documentacion.</li>
+        <li>Los endpoints se organizan con decoradores <code>@app.get()</code>, <code>@app.post()</code>, etc.</li>
+        <li>Pydantic models = contrato de datos.</li>
+        <li>HTTP tiene verbos y codigos con significado estandar.</li>
+      </ul>
+      <p class="callout callout--info"><strong>Proxima clase</strong> Frameworks: comparacion y eleccion informada.</p>
+    </section>
+
+  </main>
+
+  <nav class="controls">
+    <button type="button" id="prev" aria-label="Anterior">&lsaquo;</button>
+    <div class="dots" id="dots"></div>
+    <span id="counter">1 / 16</span>
+    <button type="button" id="next" aria-label="Siguiente">&rsaquo;</button>
+  </nav>
+
+  <script src="../../engine/slides.js"></script>
+</body>
+</html>

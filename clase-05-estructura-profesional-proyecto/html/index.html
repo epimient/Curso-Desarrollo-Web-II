@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clase 05 - Estructura profesional de proyecto FastAPI</title>
+  <link rel="stylesheet" href="../../engine/slides.css" />
+</head>
+<body>
+  <main class="deck">
+
+    <section class="slide slide--title is-active" data-slide>
+      <p class="eyebrow">Desarrollo Web II &middot; FastAPI</p>
+      <h1>Estructura profesional de proyecto</h1>
+      <p class="subtitle">Routers, schemas, services y configuracion central para proyectos que escalan.</p>
+      <p class="author">Ing. Eduardo Pimienta</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Objetivos</p>
+      <h2>Al finalizar esta clase podras</h2>
+      <ul>
+        <li>Organizar un proyecto FastAPI en capas: routers, schemas, services, core.</li>
+        <li>Usar APIRouter para agrupar endpoints por recurso.</li>
+        <li>Separar la logica de negocio en services.</li>
+        <li>Centralizar configuracion con Pydantic Settings.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Problema</p>
+      <h2>main.py no puede crecer para siempre</h2>
+      <div class="comparison">
+        <div>
+          <h3>❌ Monolito</h3>
+          <pre><code># main.py de 500 lineas
+# Rutas de cursos, users,
+# auth, reportes, logs...
+# TODO mezclado</code></pre>
+          <p>Ilegible. Imposible de mantener en equipo.</p>
+        </div>
+        <div>
+          <h3>✅ Modular</h3>
+          <pre><code>routers/courses.py
+routers/users.py
+schemas/course.py
+services/course.py
+core/config.py</code></pre>
+          <p>Cada cosa en su lugar.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Analogia</p>
+      <h2>Edificio de oficinas</h2>
+      <div class="grid-2">
+        <div class="grid-item"><strong style="color:var(--cyan)">main.py</strong><br />Recepcionista que conecta todo</div>
+        <div class="grid-item"><strong style="color:var(--green)">routers/</strong><br />Pisos del edificio (cursos, users)</div>
+        <div class="grid-item"><strong style="color:var(--orange)">services/</strong><br />Oficinas con logica de negocio</div>
+        <div class="grid-item"><strong style="color:var(--blue)">schemas/</strong><br />Formularios de entrada/salida</div>
+        <div class="grid-item"><strong style="color:var(--purple)">core/</strong><br />Manual del edificio (config)</div>
+        <div class="grid-item"><strong style="color:var(--red)">database.py</strong><br />Archivo de la BD</div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Estructura</p>
+      <h2>Arbol de directorios</h2>
+      <pre><code>app/
+  main.py           # Punto de entrada
+  core/config.py    # Configuracion central
+  routers/          # Endpoints HTTP
+    health.py
+    courses.py
+  schemas/          # Modelos Pydantic
+    course.py
+  services/         # Logica de negocio
+    course_service.py</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">main.py</p>
+      <h2>main.py: el recepcionista</h2>
+      <pre><code>from fastapi import FastAPI
+from app.core.config import settings
+from app.routers import courses, health
+
+app = FastAPI(
+    title=settings.app_name,
+    version=settings.app_version,
+)
+
+app.include_router(health.router)
+app.include_router(courses.router)</code></pre>
+      <p><code>main.py</code> solo crea la app y registra routers. No tiene logica de negocio.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">core/config.py</p>
+      <h2>Configuracion centralizada</h2>
+      <pre><code>from pydantic import BaseModel
+
+class Settings(BaseModel):
+    app_name: str = "API academica"
+    app_version: str = "0.1.0"
+    environment: str = "development"
+    database_url: str = "sqlite:///./cursos.db"
+
+settings = Settings()</code></pre>
+      <p>Toda la configuracion en un solo lugar. Facil de cambiar y mantener.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">routers/</p>
+      <h2>Routers con APIRouter</h2>
+      <pre><code>from fastapi import APIRouter
+
+router = APIRouter(
+    prefix="/courses",
+    tags=["Courses"],
+)
+
+@router.get("/")
+def list_courses():
+    return [{"id": 1, "name": "Web II"}]</code></pre>
+      <p>APIRouter agrupa endpoints de un mismo recurso. <code>prefix</code> y <code>tags</code> evitan repetir codigo.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">schemas/</p>
+      <h2>Schemas: contratos de datos</h2>
+      <pre><code>from pydantic import BaseModel, Field
+
+class CourseCreate(BaseModel):
+    name: str = Field(min_length=3, max_length=80)
+    credits: int = Field(ge=1, le=6)
+
+class CourseResponse(BaseModel):
+    id: int
+    name: str
+    credits: int
+    active: bool</code></pre>
+      <p>Define la forma de los datos que entran y salen de la API.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">services/</p>
+      <h2>Services: logica de negocio</h2>
+      <pre><code>def create_course(data: CourseCreate) -> Course:
+    if course_exists(data.name):
+        raise HTTPException(400, "Curso ya existe")
+    course = Course(**data.dict())
+    return course</code></pre>
+      <p>Los services contienen las reglas de negocio. Los routers solo llaman a services.</p>
+      <div class="callout callout--info"><strong>En español simple</strong> El router es el mesero (toma el pedido), el service es el cocinero (prepara la comida). El mesero no cocina.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Flujo</p>
+      <h2>Flujo completo de una peticion</h2>
+      <div class="flow">
+        <span class="flow-item" style="color:var(--green)">Request</span>
+        <span class="flow-item" style="color:var(--blue)">Router</span>
+        <span class="flow-item" style="color:var(--orange)">Service</span>
+        <span class="flow-item" style="color:var(--purple)">Schema</span>
+        <span class="flow-item" style="color:var(--cyan)">Response</span>
+      </div>
+      <pre><code>GET /courses  →  courses.router  →  list_courses()
+                                     →  CourseResponse[]</code></pre>
+      <p>Cada capa tiene una responsabilidad unica. Asi el proyecto puede crecer sin romperse.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Asi NO vs Asi SI</p>
+      <h2>Router gordo vs Router delgado</h2>
+      <div class="comparison">
+        <div>
+          <h3>❌ Router gordo</h3>
+          <pre><code>@router.get("/courses")
+def list():
+    cursos = db.query(...)
+    if not cursos:
+        raise HTTPException(...)
+    return [c.to_dict()
+            for c in cursos]</code></pre>
+          <p>Logica de negocio en el router. Ilegible y no testeable.</p>
+        </div>
+        <div>
+          <h3>✅ Router delgado</h3>
+          <pre><code>@router.get("/courses")
+def list():
+    return course_service.list()</code></pre>
+          <p>Router solo llama al service. La logica esta en el service.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Troubleshooting</p>
+      <h2>Errores comunes</h2>
+      <table>
+        <thead><tr><th>Error</th><th>Solucion</th></tr></thead>
+        <tbody>
+          <tr><td>Router no funciona</td><td>Olvidaste <code>app.include_router()</code> en main.py</td></tr>
+          <tr><td>ImportError circular</td><td>Service importa schema que importa service. Divide en archivos.</td></tr>
+          <tr><td>Uvicorn no encuentra app</td><td>Ejecuta desde la carpeta del proyecto, no desde app/</td></tr>
+          <tr><td>Falta __init__.py</td><td>Cada carpeta Python necesita <code>__init__.py</code> (vacio basta)</td></tr>
+          <tr><td>prefix duplicado</td><td>No pongas /courses en el router y en @router.get("/courses")</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Checklist</p>
+      <h2>Al salir de clase</h2>
+      <ul>
+        <li>[ ] Cree la estructura app/core, routers, schemas, services.</li>
+        <li>[ ] Agregue __init__.py en cada carpeta.</li>
+        <li>[ ] Cree un APIRouter con prefix y tags.</li>
+        <li>[ ] Centralice la config en core/config.py.</li>
+        <li>[ ] Los routers solo llaman services, no tienen logica.</li>
+        <li>[ ] Los schemas definen entrada y salida.</li>
+        <li>[ ] Registre los routers en main.py.</li>
+        <li>[ ] La app corre sin errores.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Actividad</p>
+      <h2>Refactorizar a estructura profesional</h2>
+      <ol>
+        <li>Toma tu API de la clase 04 (un solo main.py).</li>
+        <li>Crea la carpeta app/ con la estructura vista.</li>
+        <li>Mueve los endpoints a routers/ con APIRouter.</li>
+        <li>Crea schemas Pydantic para entrada/salida.</li>
+        <li>Crea services con la logica de negocio.</li>
+        <li>Centraliza la config en core/config.py.</li>
+        <li>Verifica que todo funciona con uvicorn.</li>
+      </ol>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Cierre</p>
+      <h2>Lo que debe quedar claro</h2>
+      <ul>
+        <li>La estructura no es burocracia: es una necesidad para proyectos reales.</li>
+        <li>Router llama a service. Service tiene la logica. Schema valida datos.</li>
+        <li>APIRouter agrupa endpoints con prefix.</li>
+        <li>Configuracion central evita valores hardcodeados.</li>
+      </ul>
+      <p class="callout callout--info"><strong>Proxima clase</strong> Modelos Pydantic y validacion avanzada.</p>
+    </section>
+
+  </main>
+
+  <nav class="controls">
+    <button type="button" id="prev" aria-label="Anterior">&lsaquo;</button>
+    <div class="dots" id="dots"></div>
+    <span id="counter">1 / 16</span>
+    <button type="button" id="next" aria-label="Siguiente">&rsaquo;</button>
+  </nav>
+
+  <script src="../../engine/slides.js"></script>
+</body>
+</html>

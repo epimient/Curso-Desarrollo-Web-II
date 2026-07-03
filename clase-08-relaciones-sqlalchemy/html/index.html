@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clase 08 - Relaciones entre modelos SQLAlchemy</title>
+  <link rel="stylesheet" href="../../engine/slides.css" />
+</head>
+<body>
+  <main class="deck">
+
+    <section class="slide slide--title is-active" data-slide>
+      <p class="eyebrow">Desarrollo Web II &middot; FastAPI</p>
+      <h1>Relaciones entre modelos</h1>
+      <p class="subtitle">ForeignKey, relationship, lazy loading y consultas con datos relacionados.</p>
+      <p class="author">Ing. Eduardo Pimienta</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Objetivos</p>
+      <h2>Al finalizar esta clase podras</h2>
+      <ul>
+        <li>Conectar dos tablas con ForeignKey.</li>
+        <li>Usar relationship() para navegar entre objetos relacionados.</li>
+        <li>Diferenciar lazy loading de eager loading.</li>
+        <li>Identificar y solucionar el problema N+1.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Problema</p>
+      <h2>Un curso sin estudiantes no tiene sentido</h2>
+      <div class="comparison">
+        <div>
+          <h3>❌ Todo en una tabla</h3>
+          <pre><code>courses
+  id | name | student_name
+  1  | Web  | Ana, Luis...</code></pre>
+          <p>Datos repetidos, dificil de consultar, normalizado.</p>
+        </div>
+        <div>
+          <h3>✅ Tablas separadas</h3>
+          <pre><code>courses: id, name
+students: id, name
+enrollments: course_id, student_id</code></pre>
+          <p>Cada cosa en su tabla, relacionadas por FK.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Analogia</p>
+      <h2>Legos que se conectan</h2>
+      <p>Cada tabla es una pieza de Lego. Las ForeignKeys son los "puntos de conexion" que permiten unir piezas.</p>
+      <div class="flow">
+        <span class="flow-item" style="color:var(--blue)">Student</span>
+        <span class="flow-item" style="color:var(--green)">FK → student_id</span>
+        <span class="flow-item" style="color:var(--orange)">Enrollment</span>
+        <span class="flow-item" style="color:var(--green)">FK → course_id</span>
+        <span class="flow-item" style="color:var(--purple)">Course</span>
+      </div>
+      <p>Enrollment es la pieza que conecta Student y Course.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">ForeignKey</p>
+      <h2>ForeignKey: el puente entre tablas</h2>
+      <pre><code>from sqlalchemy import ForeignKey
+
+class Enrollments(Base):
+    __tablename__ = "enrollments"
+
+    id = Column(Integer, primary_key=True)
+    student_id = Column(
+        Integer, ForeignKey("students.id"), nullable=False
+    )
+    course_id = Column(
+        Integer, ForeignKey("courses.id"), nullable=False
+    )</code></pre>
+      <p><code>ForeignKey("students.id")</code> dice: "esta columna apunta a la columna id de la tabla students".</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">relationship()</p>
+      <h2>relationship(): navegar entre objetos</h2>
+      <pre><code>from sqlalchemy.orm import relationship
+
+class Student(Base):
+    __tablename__ = "students"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(80), nullable=False)
+    enrollments = relationship("Enrollment",
+        back_populates="student")
+
+class Enrollment(Base):
+    __tablename__ = "enrollments"
+
+    student_id = Column(Integer, ForeignKey("students.id"))
+    student = relationship("Student",
+        back_populates="enrollments")</code></pre>
+      <p><code>relationship()</code> crea un atributo Python para navegar entre objetos. No es una columna.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">back_populates</p>
+      <h2>back_populates: conexion bidireccional</h2>
+      <div class="callout callout--info"><strong>En español simple</strong> <code>back_populates</code> conecta dos relationship() para que SQLAlchemy sepa que son el mismo vinculo visto desde ambos lados. Asi cuando agregas un enrollment a un student, el enrollment automaticamente sabe a que student pertenece.</div>
+      <pre><code># Student.enrollments → lista de Enrollment
+# Enrollment.student → un Student
+
+s = db.query(Student).first()
+s.enrollments  # [Enrollment, Enrollment]
+s.enrollments[0].student.name  # "Ana"</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Diagrama BD</p>
+      <h2>Esquema de tablas con relaciones</h2>
+      <pre><code>┌──────────────┐
+│   students   │
+│──────────────│
+│ id  (PK)     │←──┐
+│ name         │   │
+└──────────────┘   │
+                   │
+┌──────────────────┴─┐
+│   enrollments       │
+│─────────────────────│
+│ id  (PK)            │
+│ student_id (FK) ────┘
+│ course_id  (FK) ────┐
+└─────────────────────┘
+                   │
+┌──────────────────┴─┐
+│   courses           │
+│─────────────────────│
+│ id  (PK)            │
+│ name                │
+│ credits             │
+└─────────────────────┘</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Lazy vs Eager</p>
+      <h2>Lazy loading vs Eager loading</h2>
+      <table>
+        <thead><tr><th>Aspecto</th><th>Lazy</th><th>Eager (selectinload)</th></tr></thead>
+        <tbody>
+          <tr><td>Cuando carga</td><td>Solo cuando accedes a la relacion</td><td>En la misma consulta principal</td></tr>
+          <tr><td>Consultas SQL</td><td>1 + N (problema N+1)</td><td>2 (principal + JOIN)</td></tr>
+          <tr><td>Rendimiento con pocos datos</td><td style="color:var(--green)">Bueno</td><td style="color:var(--orange)">Similar</td></tr>
+          <tr><td>Rendimiento con muchos datos</td><td style="color:var(--red)">Malo (N+1)</td><td style="color:var(--green)">Bueno</td></tr>
+        </tbody>
+      </table>
+      <pre><code># Lazy (default)
+student.enrollments  # ← aqui hace la query
+
+# Eager
+from sqlalchemy.orm import selectinload
+db.query(Student).options(
+    selectinload(Student.enrollments)
+).all()</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">N+1</p>
+      <h2>Problema N+1: el enemigo del rendimiento</h2>
+      <pre><code># ❌ N+1: 1 query para students + N queries para enrollments
+students = db.query(Student).all()
+for s in students:
+    print(s.enrollments)  # ← N queries separadas!
+
+# ✅ Solucion con selectinload
+from sqlalchemy.orm import selectinload
+students = db.query(Student).options(
+    selectinload(Student.enrollments)
+).all()
+# Solo 2 queries total</code></pre>
+      <div class="callout callout--warn"><strong>Atencion</strong> El problema N+1 aparece cuando tienes listas y accedes a relaciones. Siempre usa eager loading cuando sepas que vas a necesitar las relaciones.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Codigo</p>
+      <h2>Curso con estudiantes (response anidado)</h2>
+      <pre><code>class StudentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+
+class CourseWithStudents(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    students: list[StudentResponse]
+
+@router.get("/courses/{id}")
+def read_course(id: int, db: Session = Depends(get_db)):
+    course = db.query(Course).options(
+        selectinload(Course.enrollments)
+        .selectinload(Enrollment.student)
+    ).filter(Course.id == id).first()
+    return course</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Asi NO vs Asi SI</p>
+      <h2>Manual JOIN vs relationship</h2>
+      <div class="comparison">
+        <div>
+          <h3>❌ JOIN manual</h3>
+          <pre><code>results = db.execute(
+  "SELECT s.name FROM students s "
+  "JOIN enrollments e ON s.id = e.student_id "
+  "WHERE e.course_id = ?", (id,)
+)</code></pre>
+          <p>SQL plano, no portatil, propenso a errores.</p>
+        </div>
+        <div>
+          <h3>✅ relationship()</h3>
+          <pre><code>course = db.query(Course).options(
+  selectinload(Course.enrollments)
+).first()
+course.enrollments  # ✅</code></pre>
+          <p>Python puro, legible, portatil entre BD.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Troubleshooting</p>
+      <h2>Errores comunes con relaciones</h2>
+      <table>
+        <thead><tr><th>Error</th><th>Solucion</th></tr></thead>
+        <tbody>
+          <tr><td>IntegrityError: FK violada</td><td>El ID referenciado no existe. Crea primero el registro padre.</td></tr>
+          <tr><td>DetachedInstanceError con relaciones</td><td>Usa <code>selectinload</code> para cargar la relacion dentro de la sesion.</td></tr>
+          <tr><td>La relacion devuelve None</td><td>Verifica que los datos existan y que el FK sea correcto.</td></tr>
+          <tr><td>N+1 queries en loop</td><td>Agrega <code>.options(selectinload(...))</code> a la query principal.</td></tr>
+          <tr><td>RecursionError en response_model</td><td>Usa modelos separados para entrada y salida, no el mismo modelo.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Checklist</p>
+      <h2>Al salir de clase</h2>
+      <ul>
+        <li>[ ] Defini dos modelos con ForeignKey.</li>
+        <li>[ ] Use relationship() con back_populates.</li>
+        <li>[ ] Implemente eager loading con selectinload.</li>
+        <li>[ ] Se que es el problema N+1 y como evitarlo.</li>
+        <li>[ ] Cree un response_model con datos anidados.</li>
+        <li>[ ] Entiendo la diferencia entre FK y relationship().</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Actividad</p>
+      <h2>API con estudiantes y cursos</h2>
+      <ol>
+        <li>Crea los modelos Student, Course y Enrollment.</li>
+        <li>Implementa POST /enrollments para inscribir un estudiante en un curso.</li>
+        <li>Crea un endpoint GET /courses/{id} que devuelva el curso con sus estudiantes.</li>
+        <li>Usa selectinload para evitar N+1.</li>
+        <li>Verifica que la inscripcion valide que el estudiante y el curso existan.</li>
+      </ol>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Cierre</p>
+      <h2>Lo que debe quedar claro</h2>
+      <ul>
+        <li>ForeignKey es la columna real en la BD.</li>
+        <li>relationship() es el atributo Python para navegar.</li>
+        <li>back_populates conecta ambos lados de la relacion.</li>
+        <li>Usa selectinload para evitar N+1.</li>
+      </ul>
+      <p class="callout callout--info"><strong>Proxima clase</strong> Autenticacion y seguridad con JWT.</p>
+    </section>
+
+  </main>
+
+  <nav class="controls">
+    <button type="button" id="prev" aria-label="Anterior">&lsaquo;</button>
+    <div class="dots" id="dots"></div>
+    <span id="counter">1 / 16</span>
+    <button type="button" id="next" aria-label="Siguiente">&rsaquo;</button>
+  </nav>
+
+  <script src="../../engine/slides.js"></script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clase 04 - Instalacion y primer proyecto FastAPI</title>
+  <link rel="stylesheet" href="../../engine/slides.css" />
+</head>
+<body>
+  <main class="deck">
+
+    <section class="slide slide--title is-active" data-slide>
+      <p class="eyebrow">Desarrollo Web II &middot; FastAPI</p>
+      <h1>Instalacion y primer proyecto</h1>
+      <p class="subtitle">Entorno virtual, FastAPI, Uvicorn y tu primer endpoint.</p>
+      <p class="author">Ing. Eduardo Pimienta</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Objetivos</p>
+      <h2>Al finalizar esta clase podras</h2>
+      <ul>
+        <li>Crear y activar un entorno virtual en Python.</li>
+        <li>Instalar FastAPI y Uvicorn con pip.</li>
+        <li>Ejecutar tu primer endpoint y verlo en el navegador.</li>
+        <li>Usar la documentacion automatica en /docs y /redoc.</li>
+        <li>Distinguir entre path y query parameters.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Entorno virtual</p>
+      <h2>¿Que es un entorno virtual?</h2>
+      <div class="callout callout--info"><strong>En español simple</strong> Es una caja aislada donde instalas las librerias de tu proyecto sin contaminar el resto del sistema. Cada proyecto tiene su propia caja.</div>
+      <pre><code># Crear la caja
+python -m venv venv
+
+# Activar la caja (Linux/Mac)
+source venv/bin/activate
+
+# Activar la caja (Windows)
+venv\Scripts\activate</code></pre>
+      <p>Veras <code>(venv)</code> al inicio de la terminal. Eso indica que estas dentro de la caja.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">pip</p>
+      <h2>pip: el mensajero de paquetes</h2>
+      <div class="flow">
+        <span class="flow-item">Tu proyecto</span>
+        <span class="flow-item" style="color:var(--green)">pip install</span>
+        <span class="flow-item" style="color:var(--orange)">PyPI</span>
+      </div>
+      <pre><code>pip install fastapi
+pip install "uvicorn[standard]"
+
+# O en un solo comando:
+pip install fastapi uvicorn[standard]</code></pre>
+      <p>PyPI es el repositorio oficial de paquetes Python. pip descarga e instala lo que pidas.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Hola mundo</p>
+      <h2>main.py: tu primer endpoint</h2>
+      <pre><code>from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+def raiz():
+    return {"mensaje": "Hola FastAPI!"}</code></pre>
+      <p>Guardalo como <code>main.py</code>. Esto es todo lo que necesitas para tener una API funcionando.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Uvicorn</p>
+      <h2>Uvicorn: el motor que enciende la API</h2>
+      <div class="callout callout--info"><strong>En español simple</strong> FastAPI construye la API (el auto), Uvicorn es el motor que la hace andar. Sin Uvicorn, tu codigo no escucha peticiones.</div>
+      <pre><code>uvicorn main:app --reload</code></pre>
+      <table>
+        <thead><tr><th>Parte</th><th>Significado</th></tr></thead>
+        <tbody>
+          <tr><td><code>main</code></td><td>Nombre del archivo (sin .py)</td></tr>
+          <tr><td><code>app</code></td><td>Variable FastAPI dentro del archivo</td></tr>
+          <tr><td><code>--reload</code></td><td>Reinicia automaticamente al cambiar codigo</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Desglose</p>
+      <h2>Linea por linea del primer endpoint</h2>
+      <table>
+        <thead><tr><th>Linea</th><th>Que hace</th></tr></thead>
+        <tbody>
+          <tr><td><code>from fastapi import FastAPI</code></td><td>Trae la clase principal del framework</td></tr>
+          <tr><td><code>app = FastAPI()</code></td><td>Crea la instancia de tu aplicacion</td></tr>
+          <tr><td><code>@app.get("/")</code></td><td>Decorador: "cuando llegue un GET a /, ejecuta esto"</td></tr>
+          <tr><td><code>def raiz():</code></td><td>Funcion que maneja la peticion</td></tr>
+          <tr><td><code>return {"mensaje": ...}</code></td><td>FastAPI convierte el dict a JSON automaticamente</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Path vs Query</p>
+      <h2>Path parameters vs Query parameters</h2>
+      <table>
+        <thead><tr><th>Aspecto</th><th>Path</th><th>Query</th></tr></thead>
+        <tbody>
+          <tr><td>URL</td><td><code>/cursos/5</code></td><td><code>/cursos/?skip=0</code></td></tr>
+          <tr><td>Obligatorio?</td><td>Si</td><td>No (tiene valor default)</td></tr>
+          <tr><td>Declaracion</td><td><code>@app.get("/{id}")</code></td><td><code>def f(skip: int = 0)</code></td></tr>
+          <tr><td>Uso tipico</td><td>Identificar un recurso</td><td>Filtrar, paginar, ordenar</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Documentacion</p>
+      <h2>/docs y /redoc: documentacion automatica</h2>
+      <p>FastAPI genera documentacion interactiva sin esfuerzo:</p>
+      <pre><code>http://localhost:8000/docs   # Swagger UI
+http://localhost:8000/redoc  # ReDoc</code></pre>
+      <p>Puedes probar los endpoints directamente desde el navegador. Escribe datos, ejecuta y ve la respuesta.</p>
+      <div class="callout callout--ok"><strong>Ventaja competitiva</strong> Mientras otros frameworks requieren librerias extra para documentar, FastAPI la genera automaticamente con OpenAPI.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Error 422</p>
+      <h2>Error 422: validacion fallida</h2>
+      <pre><code>@app.post("/cursos")
+def crear_curso(curso: Curso): ...
+
+# Si envias:
+# { "nombre": "Web" }
+# Falta "creditos" → 422 Unprocessable Entity</code></pre>
+      <p>FastAPI valida automaticamente que los datos coincidan con el modelo. Si algo falta o es incorrecto, devuelve 422 con el detalle.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Asi NO vs Asi SI</p>
+      <h2>Errores de instalacion y ejecucion</h2>
+      <div class="comparison">
+        <div>
+          <h3>❌ Ejecutar sin activar venv</h3>
+          <pre><code># Instalaste en venv pero ejecutas fuera
+python main.py  # ModuleNotFoundError</code></pre>
+          <p>El modulo se instalo dentro del venv, pero estas fuera.</p>
+        </div>
+        <div>
+          <h3>✅ Activar venv primero</h3>
+          <pre><code>source venv/bin/activate
+(venv) $ uvicorn main:app --reload</code></pre>
+          <p>Siempre verifica que veas <code>(venv)</code> en la terminal.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Troubleshooting</p>
+      <h2>5 errores comunes</h2>
+      <table>
+        <thead><tr><th>Error</th><th>Causa</th><th>Solucion</th></tr></thead>
+        <tbody>
+          <tr><td><code>ModuleNotFoundError: No module named 'fastapi'</code></td><td>FastAPI no instalado o venv no activado</td><td><code>pip install fastapi</code> o activar venv</td></tr>
+          <tr><td><code>Error: [Errno 48] Address already in use</code></td><td>El puerto 8000 ya esta ocupado</td><td><code>uvicorn main:app --port 8001</code></td></tr>
+          <tr><td>422 al enviar POST</td><td>Falta campo obligatorio</td><td>Revisa el modelo y el JSON enviado</td></tr>
+          <tr><td>404 en /docs</td><td>Uvicorn no esta corriendo</td><td>Ejecuta <code>uvicorn main:app --reload</code></td></tr>
+          <tr><td>Navegador no abre</td><td>Usaste <code>python main.py</code> en lugar de uvicorn</td><td>Siempre usa <code>uvicorn</code>, no <code>python</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Checklist</p>
+      <h2>Al salir de clase</h2>
+      <ul>
+        <li>[ ] Instale Python 3.10 o superior.</li>
+        <li>[ ] Cree y active un entorno virtual.</li>
+        <li>[ ] Instale fastapi y uvicorn.</li>
+        <li>[ ] Escribi mi primer endpoint GET.</li>
+        <li>[ ] Ejecute con <code>--reload</code> y vi cambios en vivo.</li>
+        <li>[ ] Accedi a /docs y /redoc.</li>
+        <li>[ ] Distingo path de query params.</li>
+        <li>[ ] Se que es un error 422.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Actividad</p>
+      <h2>Tu primera API con dos endpoints</h2>
+      <ol>
+        <li>Crea un entorno virtual e instala FastAPI + Uvicorn.</li>
+        <li>Crea un endpoint GET /saludo que reciba un query param <code>nombre</code>.</li>
+        <li>Crea un endpoint GET /usuarios/{id} que devuelva datos mock.</li>
+        <li>Prueba ambos endpoints en /docs.</li>
+        <li>Agrega validacion: si el id es menor a 1, devuelve error 422.</li>
+      </ol>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Cierre</p>
+      <h2>Lo que debe quedar claro</h2>
+      <ul>
+        <li>Entorno virtual = caja aislada por proyecto.</li>
+        <li>Uvicorn es el servidor ASGI que ejecuta FastAPI.</li>
+        <li>Los decoradores <code>@app.get()</code> definen rutas.</li>
+        <li>FastAPI convierte automaticamente tu respuesta a JSON.</li>
+        <li>/docs es tu mejor aliado para probar la API.</li>
+      </ul>
+      <p class="callout callout--info"><strong>Proxima clase</strong> Estructura profesional de proyectos FastAPI.</p>
+    </section>
+
+  </main>
+
+  <nav class="controls">
+    <button type="button" id="prev" aria-label="Anterior">&lsaquo;</button>
+    <div class="dots" id="dots"></div>
+    <span id="counter">1 / 16</span>
+    <button type="button" id="next" aria-label="Siguiente">&rsaquo;</button>
+  </nav>
+
+  <script src="../../engine/slides.js"></script>
+</body>
+</html>

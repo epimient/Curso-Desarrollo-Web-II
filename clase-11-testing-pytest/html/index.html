@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clase 11 - Testing con pytest y httpx</title>
+  <link rel="stylesheet" href="../../engine/slides.css">
+</head>
+<body>
+  <main class="slides">
+
+    <section class="slide slide--title" data-slide>
+      <p class="eyebrow">Desarrollo Web II — FastAPI</p>
+      <h1>Testing con pytest y httpx</h1>
+      <p class="subtitle">Calidad y confianza en tu API</p>
+      <div class="meta">
+        <span>Ing. Eduardo Pimienta</span>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Motivacion</p>
+      <h2>¿Por que testear APIs?</h2>
+      <div class="comparison">
+        <div class="comparison-col">
+          <h3>Sin tests</h3>
+          <ul>
+            <li>Pruebas manuales en Swagger UI</li>
+            <li>Confias en que "mas o menos funciona"</li>
+            <li>Miedo a hacer cambios grandes</li>
+            <li>Bugs aparecen en produccion</li>
+          </ul>
+        </div>
+        <div class="comparison-col">
+          <h3>Con tests</h3>
+          <ul>
+            <li>Un solo comando: <code>pytest</code></li>
+            <li>30 tests en 2 segundos</li>
+            <li>Libertad para refactorizar</li>
+            <li>Bugs se detectan antes</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Herramientas</p>
+      <h2>pytest + httpx + TestClient</h2>
+      <div class="flow-grid">
+        <div class="flow-item">
+          <strong>pytest</strong>
+          <span>Busca funciones <code>test_*</code> y verifica con <code>assert</code></span>
+        </div>
+        <div class="flow-item">
+          <strong>httpx</strong>
+          <span>Cliente HTTP moderno para Python</span>
+        </div>
+        <div class="flow-item">
+          <strong>TestClient</strong>
+          <span>Envueltto de FastAPI que simula peticiones HTTP sin servidor</span>
+        </div>
+      </div>
+      <pre><code>pip install pytest httpx pytest-cov</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Concepto clave</p>
+      <h2>TestClient</h2>
+      <p>Simula un navegador haciendo peticiones a tu API. No necesita <code>uvicorn</code> corriendo.</p>
+      <pre><code>from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+response = client.get("/health/")
+assert response.status_code == 200
+assert response.json() == {"status": "ok"}</code></pre>
+      <table>
+        <tr><th>Metodo</th><th>Uso</th></tr>
+        <tr><td><code>client.get(url)</code></td><td>GET request</td></tr>
+        <tr><td><code>client.post(url, json=...)</code></td><td>POST con body JSON</td></tr>
+        <tr><td><code>client.delete(url)</code></td><td>DELETE request</td></tr>
+        <tr><td><code>response.status_code</code></td><td>Codigo HTTP</td></tr>
+        <tr><td><code>response.json()</code></td><td>Body como dict</td></tr>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Estructura</p>
+      <h2>Organizacion de tests</h2>
+      <pre><code>app/tests/
+  __init__.py       # Vacio
+  conftest.py        # Fixtures compartidas
+  test_health.py     # Endpoints publicos
+  test_auth.py       # Registro, login, token
+  test_courses.py    # CRUD de cursos
+  test_errors.py     # 404, 422, 403
+  test_middleware.py # X-Process-Time, CORS</code></pre>
+      <p class="callout callout--info">Cada archivo <code>test_*.py</code> es descubierto automaticamente por pytest.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Fixtures</p>
+      <h2>conftest.py — Ingredientes preparados</h2>
+      <pre><code>@pytest.fixture()
+def client():
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as c:
+        yield c
+
+@pytest.fixture()
+def token(client, test_user_data):
+    client.post("/users/register", json=test_user_data)
+    resp = client.post("/token", data={
+        "username": "ana", "password": "123456"})
+    return resp.json()["access_token"]
+
+@pytest.fixture()
+def auth_headers(token):
+    return {"Authorization": f"Bearer {token}"}</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">BD en tests</p>
+      <h2>Aislar la base de datos</h2>
+      <p>Cada test debe empezar con BD limpia. La fixture <code>autouse</code> lo garantiza:</p>
+      <pre><code>@pytest.fixture(autouse=True)
+def test_db():
+    Base.metadata.create_all(bind=engine)
+    yield                       # Test se ejecuta aqui
+    Base.metadata.drop_all(bind=engine)</code></pre>
+      <p class="callout callout--success">SQLite en memoria: rapido, aislado, sin efectos secundarios entre tests.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Tests</p>
+      <h2>Probar health</h2>
+      <pre><code>def test_health_status(client):
+    response = client.get("/health/")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+def test_health_version(client):
+    response = client.get("/health/version")
+    assert response.status_code == 200
+    data = response.json()
+    assert "name" in data
+    assert "version" in data</code></pre>
+      <p><code>pytest -v -k "health"</code> → 2 tests en 0.1 segundos</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Tests</p>
+      <h2>Probar autenticacion</h2>
+      <pre><code>def test_register_success(client, test_user_data):
+    resp = client.post("/users/register", json=test_user_data)
+    assert resp.status_code == 201
+    assert resp.json()["role"] == "student"
+
+def test_login_success(client, test_user_data):
+    client.post("/users/register", json=test_user_data)
+    resp = client.post("/token", data={
+        "username": "ana", "password": "123456"})
+    assert resp.status_code == 200
+    assert "access_token" in resp.json()
+
+def test_users_me_without_token(client):
+    assert client.get("/users/me").status_code == 401</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Tests</p>
+      <h2>Probar endpoints protegidos</h2>
+      <pre><code>def test_create_course_without_token(client):
+    resp = client.post("/courses/", json={"name": "Fisica", "credits": 4})
+    assert resp.status_code == 401
+
+def test_create_course_with_token(client, auth_headers):
+    resp = client.post("/courses/", json={"name": "Fisica", "credits": 4},
+                       headers=auth_headers)
+    assert resp.status_code == 201</code></pre>
+      <p class="callout callout--info">La fixture <code>auth_headers</code> ya incluye el token. No necesitas pensar en autenticacion en cada test.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Tests</p>
+      <h2>Probar roles (admin vs student)</h2>
+      <pre><code>def test_delete_as_student(client, auth_headers, created_course):
+    resp = client.delete(f"/courses/{created_course['id']}",
+                         headers=auth_headers)
+    assert resp.status_code == 403
+
+def test_delete_as_admin(client, admin_headers, created_course):
+    resp = client.delete(f"/courses/{created_course['id']}",
+                         headers=admin_headers)
+    assert resp.status_code == 200</code></pre>
+      <p>Con fixtures separadas (<code>auth_headers</code> / <code>admin_headers</code>) probamos ambos roles sin repetir codigo.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Tests</p>
+      <h2>Probar errores (404, 422, 403)</h2>
+      <pre><code>def test_404(client):
+    resp = client.get("/courses/9999")
+    assert resp.status_code == 404
+    assert "no encontrado" in resp.json()["mensaje"]
+
+def test_422(client, auth_headers):
+    resp = client.post("/courses/", json={}, headers=auth_headers)
+    assert resp.status_code == 422
+    assert resp.json()["error"] is True
+    assert "detalles" in resp.json()</code></pre>
+      <p class="callout callout--warning">No solo pruebes que el codigo HTTP es correcto. Verifica el formato del mensaje de error.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Tests</p>
+      <h2>Probar middleware</h2>
+      <pre><code>def test_x_process_time(client):
+    resp = client.get("/health/")
+    assert "x-process-time" in resp.headers
+
+def test_cors_headers(client):
+    resp = client.options("/courses/",
+        headers={"Origin": "http://localhost:5173",
+                 "Access-Control-Request-Method": "GET"})
+    assert "access-control-allow-origin" in resp.headers</code></pre>
+      <p>Los middleware afectan Toda la API. Un par de tests verifican que estan funcionando.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Calidad</p>
+      <h2>Cobertura de codigo</h2>
+      <pre><code>pytest --cov=app --cov-report=term-missing</code></pre>
+      <table>
+        <tr><th>Cobertura</th><th>Significado</th></tr>
+        <tr><td>100%</td><td>Cada linea se ejecuto al menos una vez</td></tr>
+        <tr><td>80-99%</td><td>Bien, pero hay codigo no probado</td></tr>
+        <tr><td>&lt; 50%</td><td>Tu API sin tests es una caja de sorpresas</td></tr>
+      </table>
+      <p class="callout callout--warning">100% de cobertura NO = 0 bugs. La cobertura solo mide que se ejecuto, no que se verifico correctamente.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Actividad</p>
+      <h2>Anadir tests a tu API</h2>
+      <ol>
+        <li>Instala pytest, httpx y pytest-cov.</li>
+        <li>Crea <code>app/tests/conftest.py</code> con fixtures de BD, client, token, auth_headers.</li>
+        <li>Escribe <code>test_health.py</code> — 2 tests minimos.</li>
+        <li>Escribe <code>test_auth.py</code> — register, login, users/me.</li>
+        <li>Escribe <code>test_courses.py</code> — CRUD completo con roles.</li>
+        <li>Ejecuta <code>pytest -v</code> — todos pasan.</li>
+        <li>Ejecuta <code>pytest --cov=app</code> — cobertura minima 80%.</li>
+      </ol>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Cierre</p>
+      <h2>Lo que debe quedar claro</h2>
+      <ul>
+        <li>TestClient simula peticiones HTTP sin servidor real.</li>
+        <li>Las fixtures en conftest.py preparan el escenario para cada test.</li>
+        <li>Cada test debe empezar con BD limpia (autouse fixture).</li>
+        <li>Prueba tanto el exito (200/201) como los errores (401, 403, 404, 422).</li>
+        <li>La cobertura mide que lineas se ejecutaron, no que los tests sean correctos.</li>
+        <li>TDD: test primero, codigo despues.</li>
+      </ul>
+      <p class="callout callout--info"><strong>Proxima clase</strong> Despliegue en Render + Supabase.</p>
+    </section>
+
+  </main>
+
+  <nav class="controls">
+    <button type="button" id="prev" aria-label="Anterior">&lsaquo;</button>
+    <div class="dots" id="dots"></div>
+    <span id="counter">1 / 16</span>
+    <button type="button" id="next" aria-label="Siguiente">&rsaquo;</button>
+  </nav>
+
+  <script src="../../engine/slides.js"></script>
+</body>
+</html>

@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clase 01 - Aplicaciones web modernas</title>
+  <link rel="stylesheet" href="../../engine/slides.css" />
+</head>
+<body>
+  <main class="deck">
+
+    <section class="slide slide--title is-active" data-slide>
+      <p class="eyebrow">Desarrollo Web II &middot; FastAPI</p>
+      <h1>Aplicaciones web modernas</h1>
+      <p class="subtitle">Presentacion del curso, diagnostico inicial y marco tecnico para entender APIs, HTTP y frameworks.</p>
+      <p class="author">Ing. Eduardo Pimienta</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Objetivos</p>
+      <h2>Al finalizar esta clase podras</h2>
+      <ul>
+        <li>Explicar que ocurre cuando un usuario presiona un boton en una app web.</li>
+        <li>Identificar los componentes de una conversacion HTTP.</li>
+        <li>Definir que es una API y por que es util.</li>
+        <li>Reconocer el rol de un framework en el desarrollo web.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Pregunta guia</p>
+      <h2>¿Que ocurre cuando presionas un boton?</h2>
+      <div class="flow">
+        <span class="flow-item">Cliente</span>
+        <span class="flow-item" style="color:var(--orange)">HTTP</span>
+        <span class="flow-item">Servidor</span>
+        <span class="flow-item" style="color:var(--green)">Logica</span>
+        <span class="flow-item" style="color:var(--purple)">Respuesta</span>
+      </div>
+      <p class="callout callout--info"><strong>En español simple</strong> Cada vez que usas una app web, tu navegador (cliente) le pide datos a un servidor usando el idioma HTTP. El servidor procesa la peticion y te devuelve una respuesta.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Concepto base</p>
+      <h2>Una aplicacion web no es solo una pagina bonita</h2>
+      <ul>
+        <li>Recibe acciones del usuario.</li>
+        <li>Procesa reglas de negocio.</li>
+        <li>Consume o expone APIs.</li>
+        <li>Protege datos y permisos.</li>
+        <li>Persiste informacion.</li>
+      </ul>
+      <div class="callout callout--ok"><strong>Recordatorio</strong> El 90% del codigo de una app web no se ve: esta en el servidor, no en el navegador.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">HTTP</p>
+      <h2>El idioma comun entre cliente y servidor</h2>
+      <div class="flow">
+        <span class="flow-item"><strong style="color:var(--green)">GET</strong><br />Consultar</span>
+        <span class="flow-item"><strong style="color:var(--blue)">POST</strong><br />Crear</span>
+        <span class="flow-item"><strong style="color:var(--orange)">PUT</strong><br />Reemplazar</span>
+        <span class="flow-item"><strong style="color:var(--yellow)">PATCH</strong><br />Actualizar</span>
+        <span class="flow-item"><strong style="color:var(--red)">DELETE</strong><br />Eliminar</span>
+      </div>
+      <p>Cada verbo HTTP tiene un significado. El servidor entiende que accion quieres realizar segun el verbo que uses.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">HTTP</p>
+      <h2>Codigos de estado: el servidor responde</h2>
+      <table>
+        <thead><tr><th>Codigo</th><th>Significado</th><th>Ejemplo</th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--green)">200</td><td>OK</td><td>GET exitoso</td></tr>
+          <tr><td style="color:var(--blue)">201</td><td>Creado</td><td>POST exitoso</td></tr>
+          <tr><td style="color:var(--orange)">404</td><td>No encontrado</td><td>Ruta inexistente</td></tr>
+          <tr><td style="color:var(--red)">500</td><td>Error interno</td><td>Fallo del servidor</td></tr>
+        </tbody>
+      </table>
+      <p>Los codigos HTTP son como semaforos: te dicen si todo esta bien (verde), si algo falta (amarillo) o si algo fallo (rojo).</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">API</p>
+      <h2>Una API es un contrato</h2>
+      <pre><code>GET /cursos
+
+[
+  {
+    "id": 1,
+    "nombre": "Desarrollo Web II",
+    "creditos": 3
+  }
+]</code></pre>
+      <p>El cliente sabe que pedir; el servidor sabe que responder. Eso es una API: un acuerdo sobre como comunicarse.</p>
+      <div class="callout callout--info"><strong>En español simple</strong> API es como el menu de un restaurante. Tu pides por el numero (endpoint) y el cocinero (servidor) te prepara lo que pide el menu (respuesta).</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Frameworks</p>
+      <h2>Un framework reduce caos repetitivo</h2>
+      <div class="tags">
+        <span class="tag">Rutas</span>
+        <span class="tag">Validacion</span>
+        <span class="tag">Seguridad</span>
+        <span class="tag">Documentacion</span>
+        <span class="tag">Middleware</span>
+        <span class="tag">Pruebas</span>
+      </div>
+      <p>Sin framework, cada API empieza desde cero. Con framework, tienes las herramientas listas y solo escribes las reglas de tu negocio.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">FastAPI</p>
+      <h2>¿Por que FastAPI?</h2>
+      <ul>
+        <li>Construido sobre Python moderno (type hints).</li>
+        <li>Validacion automatica con Pydantic.</li>
+        <li>Documentacion interactiva (OpenAPI + Swagger).</li>
+        <li>Rendimiento comparable a Node.js o Go.</li>
+        <li>Curva de aprendizaje suave.</li>
+      </ul>
+      <div class="callout callout--ok"><strong>Dato clave</strong> FastAPI es el framework que mas crece en el ecosistema Python. Empresas como Microsoft, Uber y Netflix lo usan.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Analogia</p>
+      <h2>Restaurante: la analogia del curso</h2>
+      <div class="grid-2">
+        <div class="grid-item"><strong style="color:var(--cyan)">Cliente</strong><br />Comensal</div>
+        <div class="grid-item"><strong style="color:var(--cyan)">HTTP</strong><br />Mesero</div>
+        <div class="grid-item"><strong style="color:var(--cyan)">API</strong><br />Menu</div>
+        <div class="grid-item"><strong style="color:var(--cyan)">Servidor</strong><br />Cocina</div>
+        <div class="grid-item"><strong style="color:var(--cyan)">Framework</strong><br />Cocina equipada</div>
+        <div class="grid-item"><strong style="color:var(--cyan)">BD</strong><br />Despensa</div>
+      </div>
+      <p>Durante el curso usaremos esta analogia para cada concepto nuevo.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">MVC</p>
+      <h2>Separacion de responsabilidades</h2>
+      <table>
+        <thead><tr><th>MVC</th><th>FastAPI</th></tr></thead>
+        <tbody>
+          <tr><td>Modelo</td><td>Schemas Pydantic + SQLAlchemy</td></tr>
+          <tr><td>Vista</td><td>JSON (respuesta)</td></tr>
+          <tr><td>Controlador</td><td>Routers (APIRouter)</td></tr>
+          <tr><td>Transversal</td><td>Middleware + dependencias</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Mini-lab</p>
+      <h2>Consumir una API publica con Python</h2>
+      <pre><code>import requests
+
+url = "https://api.github.com/repos/tiangolo/fastapi"
+response = requests.get(url)
+data = response.json()
+
+print(data["name"])
+print(data["stargazers_count"])</code></pre>
+      <p>En 6 lineas consumiste una API real. Esto es lo que hace tu navegador cada vez que usas una app web.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Diagnostico</p>
+      <h2>Actividad inicial</h2>
+      <ol>
+        <li>Elige una aplicacion web conocida (Instagram, Twitter, MercadoLibre).</li>
+        <li>Identifica 3 acciones del usuario.</li>
+        <li>Propone los endpoints que crees que usan.</li>
+        <li>Marca que datos crees que son sensibles.</li>
+        <li>Explica que partes podria resolver FastAPI.</li>
+      </ol>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Troubleshooting</p>
+      <h2>Errores comunes</h2>
+      <table>
+        <thead><tr><th>Error</th><th>Solucion</th></tr></thead>
+        <tbody>
+          <tr><td>"requests no esta instalado"</td><td>Ejecutar <code>pip install requests</code></td></tr>
+          <tr><td>Error 404 al consumir API</td><td>Verificar que la URL sea correcta</td></tr>
+          <tr><td>JSON confuso</td><td>Usar <code>data = response.json()</code> y luego <code>print(data.keys())</code></td></tr>
+          <tr><td>No entiendo HTTP</td><td>Repasar la tabla de verbos y codigos</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Checklist</p>
+      <h2>Al salir de clase debes tener claro</h2>
+      <ul>
+        <li>[ ] Que es una conversacion HTTP y sus partes.</li>
+        <li>[ ] La diferencia entre GET, POST, PUT, DELETE.</li>
+        <li>[ ] Que es una API y para que sirve.</li>
+        <li>[ ] Por que usamos frameworks y no codigo crudo.</li>
+        <li>[ ] Como consumir una API con requests.get().</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Cierre</p>
+      <h2>Lo que debe quedar claro</h2>
+      <ul>
+        <li>La web moderna funciona por conversaciones HTTP.</li>
+        <li>Una API define contratos de comunicacion.</li>
+        <li>Un framework organiza el trabajo tecnico repetitivo.</li>
+        <li>FastAPI sera nuestro laboratorio principal.</li>
+      </ul>
+      <p class="callout callout--info"><strong>Proxima clase</strong> MVC, patrones y FastAPI en profundidad.</p>
+    </section>
+
+  </main>
+
+  <nav class="controls">
+    <button type="button" id="prev" aria-label="Anterior">&lsaquo;</button>
+    <div class="dots" id="dots"></div>
+    <span id="counter">1 / 16</span>
+    <button type="button" id="next" aria-label="Siguiente">&rsaquo;</button>
+  </nav>
+
+  <script src="../../engine/slides.js"></script>
+</body>
+</html>

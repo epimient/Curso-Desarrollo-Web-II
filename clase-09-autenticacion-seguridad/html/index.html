@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clase 09 - Autenticacion y seguridad con JWT</title>
+  <link rel="stylesheet" href="../../engine/slides.css" />
+</head>
+<body>
+  <main class="deck">
+
+    <section class="slide slide--title is-active" data-slide>
+      <p class="eyebrow">Desarrollo Web II &middot; FastAPI</p>
+      <h1>Autenticacion y seguridad con JWT</h1>
+      <p class="subtitle">Hash de contraseñas, tokens JWT, proteccion de endpoints y manejo de roles.</p>
+      <p class="author">Ing. Eduardo Pimienta</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Objetivos</p>
+      <h2>Al finalizar esta clase podras</h2>
+      <ul>
+        <li>Implementar registro de usuarios con hash de contraseñas.</li>
+        <li>Generar y verificar tokens JWT para autenticacion.</li>
+        <li>Proteger endpoints con dependencia get_current_user.</li>
+        <li>Distinguir roles (student vs admin) para autorizacion.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Problema</p>
+      <h2>Sin autenticacion, cualquiera puede hacer cualquier cosa</h2>
+      <div class="comparison">
+        <div>
+          <h3>❌ Sin proteccion</h3>
+          <pre><code>DELETE /courses/1
+# Cualquiera puede borrar
+# Sin token, sin permiso</code></pre>
+          <p>Inseguro. No sabes quien llama a la API.</p>
+        </div>
+        <div>
+          <h3>✅ Con proteccion</h3>
+          <pre><code>DELETE /courses/1
+Authorization: Bearer &lt;token&gt;
+# Solo usuarios autenticados
+# Solo admins pueden borrar</code></pre>
+          <p>Sabes quien llama y si tiene permiso.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Analogia</p>
+      <h2>Tienda sin puerta vs Tienda con seguridad</h2>
+      <div class="grid-2">
+        <div class="grid-item"><strong style="color:var(--red)">Sin autenticacion</strong><br />Tienda sin puerta: cualquiera entra, agarra productos, modifica precios, borra inventario.</div>
+        <div class="grid-item"><strong style="color:var(--green)">Con autenticacion</strong><br />Tienda con puerta + recepcionista + credencial: muestras tu carnet (token), te identifican y segun tu rol te dejan hacer ciertas cosas.</div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Hash</p>
+      <h2>Hash de contraseñas: la licuadora</h2>
+      <div class="callout callout--info"><strong>En español simple</strong> Guardar contraseñas en texto plano es como dejar la combinacion de tu caja fuerte escrita en un post-it. Un hash es como pasar la contraseña por una licuadora: obtienes un pure irreconocible, y no puedes volver a la fruta original.</div>
+      <pre><code>from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"])
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain, hashed) -> bool:
+    return pwd_context.verify(plain, hashed)</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">JWT</p>
+      <h2>JWT: el carnet de identidad digital</h2>
+      <div class="flow">
+        <span class="flow-item" style="color:var(--orange)">Login</span>
+        <span class="flow-item" style="color:var(--green)">JWT</span>
+        <span class="flow-item" style="color:var(--blue)">Almacena</span>
+        <span class="flow-item" style="color:var(--cyan)">Envia</span>
+        <span class="flow-item" style="color:var(--purple)">Verifica</span>
+      </div>
+      <pre><code>from jose import jwt
+from datetime import datetime, timedelta
+
+def create_token(data: dict) -> str:
+    payload = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=30)
+    payload.update({"exp": expire})
+    return jwt.encode(payload, SECRET_KEY, algorithm="HS256")</code></pre>
+      <p>El JWT contiene: quien eres (sub), cuando expira (exp), y que rol tienes (role).</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Flujo</p>
+      <h2>Flujo completo: registro → login → endpoint protegido</h2>
+      <pre><code>1. POST /users/register
+   { "username": "ana", "password": "123456" }
+   → Hash de password, guarda en BD
+
+2. POST /token (form data)
+   username=ana&password=123456
+   → Verifica hash, genera JWT
+
+3. GET /users/me
+   Authorization: Bearer &lt;jwt&gt;
+   → Decodifica JWT, devuelve usuario</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">OAuth2</p>
+      <h2>OAuth2PasswordBearer: el seguridad de la puerta</h2>
+      <pre><code>from fastapi.security import OAuth2PasswordBearer
+
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/token"
+)
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> User:
+    payload = decode_token(token)
+    user = db.query(User).filter(
+        User.id == int(payload["sub"])
+    ).first()
+    return user</code></pre>
+      <p>OAuth2PasswordBearer le dice a FastAPI: "esta ruta necesita un token valido en el header Authorization".</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Endpoint /token</p>
+      <h2>Desglose del endpoint /token</h2>
+      <pre><code>@router.post("/token", response_model=Token)
+def login(form_data: OAuth2PasswordRequestForm = Depends(),
+          db: Session = Depends(get_db)):
+
+    user = db.query(User).filter(
+        User.username == form_data.username).first()
+
+    if not user or not verify_password(
+        form_data.password, user.hashed_password):
+        raise HTTPException(401)
+
+    token = create_access_token(
+        data={"sub": str(user.id), "role": user.role})
+
+    return Token(access_token=token, token_type="bearer")
+</code></pre>
+      <p>Recibe user+pass → verifica hash → genera token → devuelve JWT.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Proteger endpoint</p>
+      <h2>Proteger un endpoint con get_current_user</h2>
+      <pre><code>@router.get("/users/me", response_model=UserResponse)
+def read_users_me(
+    current_user: User = Depends(get_current_user),
+):
+    return current_user
+
+@router.delete("/courses/{id}")
+def delete_course(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(403, "Not enough permissions")
+    # ... borrar curso</code></pre>
+      <p>Si no hay token valido → 401. Si hay token pero sin permisos → 403.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Roles</p>
+      <h2>Roles: student vs admin</h2>
+      <table>
+        <thead><tr><th>Rol</th><th>Puede hacer</th></tr></thead>
+        <tbody>
+          <tr><td>student</td><td>Ver cursos, ver su perfil</td></tr>
+          <tr><td>admin</td><td>Todo lo anterior + crear/borrar cursos, cambiar roles</td></tr>
+        </tbody>
+      </table>
+      <pre><code>if current_user.role != "admin":
+    raise HTTPException(
+        status_code=403,
+        detail="Accion solo para administradores"
+    )</code></pre>
+      <p>El rol se guarda en el JWT y se verifica en cada endpoint protegido.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Asi NO vs Asi SI</p>
+      <h2>Endpoint abierto vs protegido</h2>
+      <div class="comparison">
+        <div>
+          <h3>❌ Endpoint abierto</h3>
+          <pre><code>@router.delete("/courses/{id}")
+def delete(id: int):
+    # Cualquiera borra
+    # Sin restriccion</code></pre>
+        </div>
+        <div>
+          <h3>✅ Endpoint protegido</h3>
+          <pre><code>@router.delete("/courses/{id}")
+def delete(id: int,
+  current=Depends(get_current_user)):
+    if current.role != "admin":
+        raise HTTPException(403)
+    # Solo admin borra</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Troubleshooting</p>
+      <h2>Errores comunes con autenticacion</h2>
+      <table>
+        <thead><tr><th>Error</th><th>Solucion</th></tr></thead>
+        <tbody>
+          <tr><td>401 Unauthorized</td><td>Token invalido, expirado, o no enviado. Revisa el header Authorization.</td></tr>
+          <tr><td>403 Forbidden</td><td>Token valido pero sin permisos. El usuario no es admin.</td></tr>
+          <tr><td>422 en /token</td><td>Los datos no tienen el formato correcto. Revisa username y password.</td></tr>
+          <tr><td>JWTError al decodificar</td><td>El token esta corrupto o fue manipulado.</td></tr>
+          <tr><td>Token expirado</td><td>El token tiene tiempo limitado. Genera uno nuevo haciendo login.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Checklist</p>
+      <h2>Al salir de clase</h2>
+      <ul>
+        <li>[ ] Implemente hash con bcrypt (NUNCA texto plano).</li>
+        <li>[ ] Cree el modelo User con hashed_password.</li>
+        <li>[ ] Implemente POST /token que devuelve JWT.</li>
+        <li>[ ] Protegi endpoints con get_current_user.</li>
+        <li>[ ] Diferencie roles: student vs admin.</li>
+        <li>[ ] Entiendo la diferencia entre 401 (no auth) y 403 (sin permiso).</li>
+        <li>[ ] Se que SECRET_KEY no debe estar hardcodeada en produccion.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Actividad</p>
+      <h2>Anadir autenticacion a tu API</h2>
+      <ol>
+        <li>Agrega el modelo User con username, email, hashed_password, role.</li>
+        <li>Implementa POST /users/register y POST /token.</li>
+        <li>Protege el endpoint de crear cursos (solo autenticados).</li>
+        <li>Protege el DELETE de cursos (solo admin).</li>
+        <li>Prueba el flujo completo desde Swagger UI (/docs).</li>
+      </ol>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Cierre</p>
+      <h2>Lo que debe quedar claro</h2>
+      <ul>
+        <li>Nunca guardar contraseñas en texto plano. Siempre hash con bcrypt.</li>
+        <li>JWT = carnet digital firmado por el servidor.</li>
+        <li>get_current_user protege endpoints.</li>
+        <li>401 = no identificado. 403 = identificado pero sin permiso.</li>
+      </ul>
+      <p class="callout callout--info"><strong>Proxima clase</strong> Middleware, CORS y manejo global de errores.</p>
+    </section>
+
+  </main>
+
+  <nav class="controls">
+    <button type="button" id="prev" aria-label="Anterior">&lsaquo;</button>
+    <div class="dots" id="dots"></div>
+    <span id="counter">1 / 16</span>
+    <button type="button" id="next" aria-label="Siguiente">&rsaquo;</button>
+  </nav>
+
+  <script src="../../engine/slides.js"></script>
+</body>
+</html>

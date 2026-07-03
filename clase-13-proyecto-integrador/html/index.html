@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clase 13 - Proyecto Integrador</title>
+  <link rel="stylesheet" href="../../engine/slides.css">
+</head>
+<body>
+  <main class="slides">
+
+    <section class="slide slide--title" data-slide>
+      <p class="eyebrow">Desarrollo Web II — FastAPI</p>
+      <h1>Proyecto Integrador: Sistema de Gesti&oacute;n Acad&eacute;mica</h1>
+      <p class="subtitle">Cierre y revisi&oacute;n del curso</p>
+      <div class="meta">
+        <span>Ing. Eduardo Pimienta</span>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Recorrido</p>
+      <h2>Un vistazo a las 13 semanas</h2>
+      <div class="flow-grid" style="grid-template-columns: repeat(4,1fr);">
+        <div class="flow-item"><strong>Clase 01</strong> HTTP &amp; REST</div>
+        <div class="flow-item"><strong>Clase 02</strong> MVC</div>
+        <div class="flow-item"><strong>Clase 03</strong> Frameworks</div>
+        <div class="flow-item"><strong>Clase 04</strong> FastAPI</div>
+        <div class="flow-item"><strong>Clase 05</strong> Estructura</div>
+        <div class="flow-item"><strong>Clase 06</strong> Pydantic</div>
+        <div class="flow-item"><strong>Clase 07</strong> SQLAlchemy</div>
+        <div class="flow-item"><strong>Clase 08</strong> Relaciones</div>
+        <div class="flow-item"><strong>Clase 09</strong> JWT Auth</div>
+        <div class="flow-item"><strong>Clase 10</strong> CORS</div>
+        <div class="flow-item"><strong>Clase 11</strong> Testing</div>
+        <div class="flow-item"><strong>Clase 12</strong> Deploy</div>
+      </div>
+      <p class="callout callout--info" style="margin-top:1rem;"><strong>Clase 13</strong> Todo junto: relaciones M:N + PUT + paginaci&oacute;n + pruebas + deploy</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Motivaci&oacute;n</p>
+      <h2>&iquest;Qu&eacute; falta en el proyecto actual?</h2>
+      <table>
+        <tr><th>Funcionalidad</th><th>Estado</th><th>Clase 13</th></tr>
+        <tr><td>CRUD Cursos</td><td>GET, POST, DELETE</td><td>+ PUT</td></tr>
+        <tr><td>Listado cursos</td><td>Sin filtros</td><td>+ paginaci&oacute;n + filtros</td></tr>
+        <tr><td>Relaci&oacute;n M:N</td><td>No implementada</td><td>Enrollments</td></tr>
+        <tr><td>Matr&iacute;culas</td><td>No existen</td><td>CRUD completo</td></tr>
+        <tr><td>Pruebas</td><td>Cobertura 95%</td><td>+ tests enrollments</td></tr>
+        <tr><td>Despliegue</td><td>Render + Supabase</td><td>Verificar funcionando</td></tr>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Arquitectura</p>
+      <h2>Modelo de datos extendido</h2>
+      <pre><code>┌──────────┐       ┌──────────────┐       ┌──────────┐
+│   User   │       │  Enrollment  │       │  Course  │
+├──────────┤       ├──────────────┤       ├──────────┤
+│ id (PK)  │──┐    │ id (PK)      │    ┌──│ id (PK)  │
+│ username │  └─── │ student_id   │    │  │ name     │
+│ email    │       │ course_id    │────┘  │ credits  │
+│ role     │       │ grade        │       │ active   │
+│ active   │       │ status(enum) │       └──────────┘
+└──────────┘       └──────────────┘</code></pre>
+      <p class="callout callout--success">Un estudiante puede estar en muchos cursos. Un curso puede tener muchos estudiantes. La tabla <code>enrollments</code> es el puente M:N con datos extra (nota, estado).</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Nuevo modelo</p>
+      <h2>Enrollment con Enum</h2>
+      <pre><code>class EnrollmentStatus(str, enum.Enum):
+    enrolled = "enrolled"
+    completed = "completed"
+    cancelled = "cancelled"
+
+class Enrollment(Base):
+    __tablename__ = "enrollments"
+
+    id = Column(Integer, primary_key=True)
+    student_id = Column(Integer, ForeignKey("users.id"))
+    course_id = Column(Integer, ForeignKey("courses.id"))
+    grade = Column(Float, nullable=True)
+    status = Column(Enum(EnrollmentStatus),
+                    default=EnrollmentStatus.enrolled)</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Nuevos endpoints</p>
+      <h2>API de matr&iacute;culas</h2>
+      <table>
+        <tr><th>M&eacute;todo</th><th>Ruta</th><th>Auth</th><th>Descripci&oacute;n</th></tr>
+        <tr><td>POST</td><td>/enrollments/</td><td>S&iacute;</td><td>Inscribir estudiante</td></tr>
+        <tr><td>GET</td><td>/enrollments/</td><td>S&iacute;</td><td>Listar (filtros)</td></tr>
+        <tr><td>GET</td><td>/enrollments/{id}</td><td>S&iacute;</td><td>Detalle</td></tr>
+        <tr><td>PATCH</td><td>/enrollments/{id}</td><td>S&iacute;</td><td>Actualizar nota/status</td></tr>
+        <tr><td>DELETE</td><td>/enrollments/{id}</td><td>Admin</td><td>Cancelar matr&iacute;cula</td></tr>
+      </table>
+      <p class="callout callout--warning">Un estudiante no puede inscribirse dos veces al mismo curso (validaci&oacute;n en servicio).</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Mejoras</p>
+      <h2>Paginaci&oacute;n en GET /courses/</h2>
+      <pre><code>GET /courses/?page=1&per_page=5&name=python
+
+Respuesta:
+{
+  "items": [...],
+  "total": 23,
+  "page": 1,
+  "per_page": 5,
+  "pages": 5
+}</code></pre>
+      <p>Adem&aacute;s: filtros por <code>name</code>, <code>credits</code>, <code>active</code>.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Mejoras</p>
+      <h2>PUT /courses/{id}</h2>
+      <pre><code>@router.put("/{course_id}", response_model=CourseResponse)
+def update_course(course_id: int, data: CourseUpdate,
+                  db: Session = Depends(get_db),
+                  current_user: User = Depends(get_current_user)):
+    return CourseService.update(db, course_id, data)</code></pre>
+      <table>
+        <tr><th>PUT</th><th>PATCH</th></tr>
+        <tr><td>Reemplaza todo el recurso</td><td>Actualizaci&oacute;n parcial</td></tr>
+        <tr><td>Campos omitidos → null</td><td>Campos omitidos → no cambian</td></tr>
+        <tr><td>Usado en courses</td><td>Usado en enrollments</td></tr>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Pruebas</p>
+      <h2>Tests para enrollments</h2>
+      <pre><code>test_create_enrollment           ✓ 201 creado
+test_duplicate_enrollment_fails  ✓ 400 error
+test_list_enrollments            ✓ lista con 1 item
+test_get_enrollment_by_id        ✓ 200 con detalle
+test_update_enrollment_grade     ✓ 200 nota actualizada
+test_delete_enrollment_admin     ✓ 204 eliminado
+test_delete_enrollment_student   ✓ 403 prohibido</code></pre>
+      <p class="callout callout--info"><strong>Meta:</strong> pytest --cov=app &ge; 90%</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Pr&aacute;ctica</p>
+      <h2>Flujo de trabajo completo</h2>
+      <ol>
+        <li>Modelo &rarr; Schema &rarr; Service &rarr; Router</li>
+        <li>Registrar en main.py y __init__.py</li>
+        <li>Probar con Swagger UI</li>
+        <li>Escribir tests</li>
+        <li>Verificar coverage</li>
+        <li>Desplegar en Render</li>
+        <li>Desplegar en Render</li>
+      </ol>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Ejercicios</p>
+      <h2>4 ejercicios + desaf&iacute;o</h2>
+      <ol>
+        <li>Filtro por rango de cr&eacute;ditos (min_credits, max_credits)</li>
+        <li>PATCH /courses/{id} (no requiere admin)</li>
+        <li>EnrollmentLog — historial de cambios</li>
+        <li>Pruebas de paginaci&oacute;n (15 cursos, 3 p&aacute;ginas)</li>
+      </ol>
+      <p><strong>Desaf&iacute;o:</strong> GET /reports/stats con datos agregados (func.avg, func.count)</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Evaluaci&oacute;n</p>
+      <h2>Criterios</h2>
+      <table>
+        <tr><th>Criterio</th><th>Peso</th></tr>
+        <tr><td>Modelo Enrollment (M:N + Enum)</td><td>15%</td></tr>
+        <tr><td>CRUD Enrollment (5 endpoints)</td><td>20%</td></tr>
+        <tr><td>PUT /courses/{id} + paginaci&oacute;n</td><td>25%</td></tr>
+        <tr><td>Pruebas unitarias (m&iacute;n 10 tests)</td><td>20%</td></tr>
+        <tr><td>Seguridad (student vs admin)</td><td>10%</td></tr>
+        <tr><td>Despliegue en Render</td><td>10%</td></tr>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Troubleshooting</p>
+      <h2>Errores comunes</h2>
+      <table>
+        <tr><th>Error</th><th>Causa</th><th>Soluci&oacute;n</th></tr>
+        <tr><td>no such table: enrollments</td><td>Modelo no importado</td><td>Importar en app.models.__init__</td></tr>
+        <tr><td>400 duplicate enrollment</td><td>Ya inscrito</td><td>Verificar filtro en servicio</td></tr>
+        <tr><td>Swagger sin query params</td><td>Faltan type hints</td><td>Agregar <code>: int</code> en par&aacute;metros</td></tr>
+        <tr><td>403 en DELETE enrollment</td><td>Token sin rol admin</td><td>Usar require_admin en lugar de get_current_user</td></tr>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Checklist final</p>
+      <h2>Antes de entregar</h2>
+      <ul>
+        <li>pytest -v &rarr; todos verdes</li>
+        <li>pytest --cov=app &rarr; m&iacute;n 90%</li>
+        <li>Swagger UI en /docs funcional</li>
+        <li>Deploy exitoso en Render</li>
+        <li>Endpoint /health/ en Render responde 200</li>
+        <li>Matr&iacute;cula creada desde Swagger UI apuntando a producci&oacute;n</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Cierre</p>
+      <h2>&iquest;Qu&eacute; logramos?</h2>
+      <ul>
+        <li>API REST profesional con FastAPI</li>
+        <li>Autenticaci&oacute;n JWT con roles</li>
+        <li>Persistencia con SQLAlchemy + relaciones M:N</li>
+        <li>Middleware, CORS, manejo de errores</li>
+        <li>Pruebas automatizadas con cobertura</li>
+        <li>Despliegue en la nube con Render + Supabase</li>
+      </ul>
+      <p class="callout callout--success">Has pasado de cero a tener una API en producci&oacute;n. &iexcl;En 13 semanas!</p>
+    </section>
+
+    <section class="slide slide--title" data-slide>
+      <p class="eyebrow">Desarrollo Web II — FastAPI</p>
+      <h1>Gracias</h1>
+      <p class="subtitle">Ing. Eduardo Pimienta</p>
+      <p style="margin-top:2rem;color:var(--cyan);">"El mejor modo de predecir el futuro es crearlo."<br>&mdash; Peter Drucker</p>
+    </section>
+
+  </main>
+
+  <nav class="controls">
+    <button type="button" id="prev" aria-label="Anterior">&lsaquo;</button>
+    <div class="dots" id="dots"></div>
+    <span id="counter">1 / 16</span>
+    <button type="button" id="next" aria-label="Siguiente">&rsaquo;</button>
+  </nav>
+
+  <script src="../../engine/slides.js"></script>
+</body>
+</html>

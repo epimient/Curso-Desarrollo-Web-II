@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clase 12 - Despliegue en Render + Supabase</title>
+  <link rel="stylesheet" href="../../engine/slides.css">
+</head>
+<body>
+  <main class="slides">
+
+    <section class="slide slide--title" data-slide>
+      <p class="eyebrow">Desarrollo Web II — FastAPI</p>
+      <h1>Despliegue en Render + Supabase</h1>
+      <p class="subtitle">Tu API en internet, 24/7</p>
+      <div class="meta">
+        <span>Ing. Eduardo Pimienta</span>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Motivacion</p>
+      <h2>¿Donde esta tu API ahora?</h2>
+      <div class="comparison">
+        <div class="comparison-col">
+          <h3>Semana 1-11</h3>
+          <ul>
+            <li>Solo en tu computadora</li>
+            <li>Nadie mas puede usarla</li>
+            <li>Se apaga cuando cierras la terminal</li>
+            <li>Base de datos en un archivo local</li>
+          </ul>
+        </div>
+        <div class="comparison-col">
+          <h3>Semana 12</h3>
+          <ul>
+            <li>Disponible en internet</li>
+            <li>Cualquiera puede acceder</li>
+            <li>Corre 24/7 en la nube</li>
+            <li>Base de datos profesional PostgreSQL</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Stack</p>
+      <h2>Arquitectura de produccion</h2>
+      <pre><code>Usuario → https://api.onrender.com
+                │
+                ▼
+          Render Web Service (Python Runtime)
+                │
+                ├── pip install -r requirements.txt
+                │     └── fastapi run app/main.py
+                │
+                ▼
+          Supabase PostgreSQL</code></pre>
+      <div class="flow-grid">
+        <div class="flow-item"><strong>Render</strong> Web service gratis (Python runtime)</div>
+        <div class="flow-item"><strong>Supabase</strong> PostgreSQL gratis (no expira)</div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Configuracion</p>
+      <h2>Variables de entorno</h2>
+      <p>La configuracion NO va en el codigo. Va en el ambiente.</p>
+      <pre><code># app/core/config.py
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+    database_url: str = "sqlite:///./cursos.db"
+    secret_key: str = "changeme"
+    environment: str = "development"
+    model_config = SettingsConfigDict(env_file=".env")</code></pre>
+      <table>
+        <tr><th>Variable</th><th>Desarrollo</th><th>Produccion</th></tr>
+        <tr><td>DATABASE_URL</td><td>sqlite:///./cursos.db</td><td>postgresql://...</td></tr>
+        <tr><td>SECRET_KEY</td><td>changeme</td><td>openssl rand -hex 32</td></tr>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Infraestructura</p>
+      <h2>Supabase: PostgreSQL gratis</h2>
+      <ul>
+        <li>500 MB de almacenamiento — gratis</li>
+        <li><strong>No expira</strong> (vs Render Postgres que expira a 30 dias)</li>
+        <li>SSL incluido</li>
+        <li>Conexion desde cualquier servidor</li>
+      </ul>
+      <pre><code># Connection string de Supabase
+postgresql://postgres:password@db.xxx.supabase.co:5432/postgres</code></pre>
+      <p class="callout callout--info">En Supabase, las tablas se crean automaticamente con <code>Base.metadata.create_all()</code> en el lifespan.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Render</p>
+      <h2>Runtime Python: despliegue directo</h2>
+      <p>Render ejecuta tu API sin Docker. Solo necesitas:</p>
+      <pre><code># Render hace esto automaticamente:
+pip install -r requirements.txt
+fastapi run app/main.py --port 10000</code></pre>
+      <table>
+        <tr><th>Tu responsabilidad</th><th>Render lo hace</th></tr>
+        <tr><td>requirements.txt</td><td>pip install</td></tr>
+        <tr><td>main.py con FastAPI app</td><td>fastapi run</td></tr>
+        <tr><td>Variables de entorno</td><td>Lee del dashboard</td></tr>
+      </table>
+      <p class="callout callout--success">Sin Dockerfile, sin Docker, sin configuracion extra.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Despliegue</p>
+      <h2>Render: crear Web Service</h2>
+      <ol>
+        <li>Sube tu codigo a GitHub</li>
+        <li>Render.com → New + → Web Service</li>
+        <li>Conecta tu repositorio</li>
+        <li>Configura:
+          <ul>
+            <li><code>Runtime:</code> <code>Python 3</code></li>
+            <li><code>Build Command:</code> <code>pip install -r requirements.txt</code></li>
+            <li><code>Start Command:</code> <code>fastapi run app/main.py --port 10000</code></li>
+            <li>Plan: Free</li>
+          </ul>
+        </li>
+        <li>Agrega variables de entorno (DATABASE_URL, SECRET_KEY, etc.)</li>
+        <li>Deploy → espera ~3 minutos</li>
+      </ol>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Despliegue</p>
+      <h2>Variables de entorno en Render</h2>
+      <p>Estos valores se configuran en el dashboard de Render (no en el codigo):</p>
+      <table>
+        <tr><th>Variable</th><th>Valor</th></tr>
+        <tr><td>DATABASE_URL</td><td>postgresql://... (de Supabase)</td></tr>
+        <tr><td>SECRET_KEY</td><td>generada con openssl</td></tr>
+        <tr><td>ENVIRONMENT</td><td>production</td></tr>
+        <tr><td>CORS_ORIGINS</td><td>["https://tu-app.onrender.com"]</td></tr>
+        <tr><td>ALLOWED_HOSTS</td><td>[".onrender.com"]</td></tr>
+      </table>
+      <p class="callout callout--warning">Nunca subas valores reales a Git. Solo usa variables de entorno.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Despliegue</p>
+      <h2>Supabase: crear BD</h2>
+      <ol>
+        <li>supabase.com → New project</li>
+        <li>Name: api-academica-db</li>
+        <li>Crea una contrasena segura (guardala)</li>
+        <li>Espera ~2 min a que se cree</li>
+        <li>Settings → Database → Connection string</li>
+        <li>Copia la URI y reemplaza [YOUR-PASSWORD]</li>
+        <li>Pega esa URI en DATABASE_URL de Render</li>
+      </ol>
+      <p class="callout callout--info">Supabase PostgreSQL no expira. 500MB gratis para siempre.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">CI/CD</p>
+      <h2>Despliegues automaticos</h2>
+      <p>Render escucha cambios en GitHub. Cada <code>git push</code> = nuevo deploy.</p>
+      <pre><code>git add .
+git commit -m "Fix: validacion de email"
+git push origin main
+# Render detecta el cambio, reconstruye y despliega</code></pre>
+      <p>(Opcional) GitHub Actions para ejecutar tests antes del deploy:</p>
+      <pre><code>name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -r requirements.txt
+      - run: pytest</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Buenas practicas</p>
+      <h2>Secretos y CORS en produccion</h2>
+      <div class="comparison">
+        <div class="comparison-col">
+          <h3>❌ Mal</h3>
+          <ul>
+            <li><code>secret_key = "123456"</code> en el codigo</li>
+            <li><code>database_url</code> hardcodeado</li>
+            <li><code>.env</code> subido a Git</li>
+            <li>CORS permitiendo cualquier origen</li>
+          </ul>
+        </div>
+        <div class="comparison-col">
+          <h3>✅ Bien</h3>
+          <ul>
+            <li><code>SECRET_KEY</code> en variables de entorno</li>
+            <li><code>DATABASE_URL</code> desde env</li>
+            <li><code>.env</code> en .gitignore</li>
+            <li>CORS solo con origenes permitidos</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Actividad</p>
+      <h2>Desplegar tu API</h2>
+      <ol>
+        <li>Migra config.py a pydantic-settings con env_file.</li>
+        <li>Actualiza database.py (sin connect_args SQLite).</li>
+        <li>Crea proyecto en Supabase, copia DATABASE_URL.</li>
+        <li>Sube a GitHub.</li>
+        <li>Crea Web Service en Render (Runtime: Python 3).</li>
+        <li>Configura DATABASE_URL, SECRET_KEY, ENVIRONMENT.</li>
+        <li>Verifica: <code>curl https://tu-api.onrender.com/health/</code>.</li>
+      </ol>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Troubleshooting</p>
+      <h2>Errores comunes</h2>
+      <table>
+        <tr><th>Error</th><th>Causa</th><th>Solucion</th></tr>
+        <tr><td>500 al abrir /docs</td><td>SQLite en Render</td><td>Configurar DATABASE_URL a PostgreSQL</td></tr>
+        <tr><td>Build falla</td><td>Dependencia incorrecta</td><td>Verificar requirements.txt</td></tr>
+        <tr><td>Cold start lento</td><td>Free tier de Render</td><td>Es normal, esperar ~30s</td></tr>
+        <tr><td>CORS bloquea frontend</td><td>Origins no configurados</td><td>Agregar URL del frontend a CORS_ORIGINS</td></tr>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Cierre</p>
+      <h2>Lo que debe quedar claro</h2>
+      <ul>
+        <li>pydantic-settings separa configuracion del codigo.</li>
+        <li>PostgreSQL (Supabase) reemplaza a SQLite en produccion.</li>
+        <li>Render aloja tu web service gratis con runtime Python nativo.</li>
+        <li>No necesitas Docker — Render maneja pip install + fastapi run.</li>
+        <li>Las variables de entorno protegen secretos y permiten cambiar config sin modificar codigo.</li>
+        <li>Nunca hardcodees claves, URLs o passwords.</li>
+      </ul>
+      <p class="callout callout--info"><strong>Proxima clase</strong> Proyecto integrador — cierre del curso.</p>
+    </section>
+
+  </main>
+
+  <nav class="controls">
+    <button type="button" id="prev" aria-label="Anterior">&lsaquo;</button>
+    <div class="dots" id="dots"></div>
+    <span id="counter">1 / 14</span>
+    <button type="button" id="next" aria-label="Siguiente">&rsaquo;</button>
+  </nav>
+
+  <script src="../../engine/slides.js"></script>
+</body>
+</html>

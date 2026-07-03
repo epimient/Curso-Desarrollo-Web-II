@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clase 07 - Persistencia de datos con SQLAlchemy</title>
+  <link rel="stylesheet" href="../../engine/slides.css" />
+</head>
+<body>
+  <main class="deck">
+
+    <section class="slide slide--title is-active" data-slide>
+      <p class="eyebrow">Desarrollo Web II &middot; FastAPI</p>
+      <h1>Persistencia de datos con SQLAlchemy</h1>
+      <p class="subtitle">Bases de datos, ORM, sesiones y operaciones CRUD con SQLAlchemy 2.0.</p>
+      <p class="author">Ing. Eduardo Pimienta</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Objetivos</p>
+      <h2>Al finalizar esta clase podras</h2>
+      <ul>
+        <li>Conectar FastAPI a una base de datos SQLite usando SQLAlchemy.</li>
+        <li>Definir modelos SQLAlchemy y crear las tablas automaticamente.</li>
+        <li>Usar Session para operaciones CRUD: crear, leer, actualizar, borrar.</li>
+        <li>Inyectar la sesion de BD como dependencia en FastAPI.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Problema</p>
+      <h2>Los datos en memoria se pierden al reiniciar</h2>
+      <div class="comparison">
+        <div>
+          <h3>❌ Sin persistencia</h3>
+          <pre><code># Lista en memoria
+cursos = []
+# Al reiniciar el servidor
+# todo se borra 😢</code></pre>
+          <p>Los datos viven solo mientras la app esta corriendo.</p>
+        </div>
+        <div>
+          <h3>✅ Con BD</h3>
+          <pre><code># Datos en disco
+cursor.execute(
+  "SELECT * FROM cursos"
+)
+# Sobreviven a reinicios</code></pre>
+          <p>Los datos persisten aunque apagues el servidor.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Analogia</p>
+      <h2>Pizarra vs Cuaderno</h2>
+      <div class="grid-2">
+        <div class="grid-item"><strong style="color:var(--orange)">Pizarra (memoria)</strong><br />Escribes, ves, pero al borrar la pizarra se pierde todo. Rapido pero temporal.</div>
+        <div class="grid-item"><strong style="color:var(--green)">Cuaderno (BD)</strong><br />Escribes, cierras el cuaderno, lo abres al otro dia y los datos siguen ahi.</div>
+      </div>
+      <p>La BD es tu cuaderno: guarda los datos para siempre (o hasta que los borres explicitamente).</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">ORM</p>
+      <h2>ORM: el traductor Python ↔ SQL</h2>
+      <div class="flow">
+        <span class="flow-item" style="color:var(--cyan)">Python</span>
+        <span class="flow-item" style="color:var(--green)">ORM</span>
+        <span class="flow-item" style="color:var(--orange)">SQL</span>
+      </div>
+      <div class="callout callout--info"><strong>En español simple</strong> Un ORM te permite hablar con la BD usando objetos de Python en lugar de escribir SQL. En vez de <code>SELECT * FROM cursos</code>, escribes <code>db.query(Curso).all()</code>.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">database.py</p>
+      <h2>database.py: conexion a la BD</h2>
+      <pre><code>from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+
+engine = create_engine("sqlite:///./cursos.db",
+    connect_args={"check_same_thread": False})
+
+SessionLocal = sessionmaker(
+    autocommit=False, autoflush=False, bind=engine)
+
+class Base(DeclarativeBase):
+    pass</code></pre>
+      <table>
+        <thead><tr><th>Componente</th><th>Que hace</th></tr></thead>
+        <tbody>
+          <tr><td><code>engine</code></td><td>Puente Python ↔ BD</td></tr>
+          <tr><td><code>SessionLocal</code></td><td>Fabrica de sesiones</td></tr>
+          <tr><td><code>Base</code></td><td>Clase base para modelos</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Modelo SQLAlchemy</p>
+      <h2>Modelo: la clase que representa una tabla</h2>
+      <pre><code>from sqlalchemy import Column, Integer, String, Boolean
+from app.database import Base
+
+class Course(Base):
+    __tablename__ = "courses"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(80), nullable=False)
+    credits = Column(Integer, nullable=False)
+    active = Column(Boolean, default=True)
+</code></pre>
+      <p>Cada atributo del modelo es una columna de la tabla.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">get_db</p>
+      <h2>Dependencia get_db: sesion por request</h2>
+      <pre><code>from app.database import SessionLocal
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()</code></pre>
+      <div class="callout callout--info"><strong>En español simple</strong> Cada vez que llega un request, abrimos una conexion a la BD. Cuando termina, la cerramos. Asi evitamos fugas de conexiones.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">CRUD</p>
+      <h2>Operaciones CRUD en el service</h2>
+      <pre><code>def list_courses(db: Session):
+    return db.query(Course).all()
+
+def get_course(db: Session, id: int):
+    return db.query(Course).filter(
+        Course.id == id
+    ).first()
+
+def create_course(db: Session, data):
+    course = Course(**data.dict())
+    db.add(course)
+    db.commit()
+    db.refresh(course)
+    return course</code></pre>
+      <p>El service recibe <code>db: Session</code> como parametro, inyectado por FastAPI.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Flujo completo</p>
+      <h2>Request  →  BD  →  Response</h2>
+      <div class="flow">
+        <span class="flow-item" style="color:var(--green)">Request</span>
+        <span class="flow-item" style="color:var(--blue)">Router</span>
+        <span class="flow-item" style="color:var(--orange)">Service</span>
+        <span class="flow-item" style="color:var(--purple)">Session</span>
+        <span class="flow-item" style="color:var(--cyan)">BD</span>
+        <span class="flow-item" style="color:var(--green)">Response</span>
+      </div>
+      <pre><code>GET /courses/1
+
+→ Router llama a get_course(1)
+→ Service ejecuta query en BD
+→ Session devuelve resultado
+→ Router devuelve JSON</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">SQLite vs PostgreSQL</p>
+      <h2>¿Que BD usar?</h2>
+      <table>
+        <thead><tr><th>Criterio</th><th>SQLite</th><th>PostgreSQL</th></tr></thead>
+        <tbody>
+          <tr><td>Instalacion</td><td style="color:var(--green)">Ninguna (incluida)</td><td>Requiere servidor</td></tr>
+          <tr><td>Concurrencia</td><td style="color:var(--orange)">Limitada</td><td style="color:var(--green)">Alta</td></tr>
+          <tr><td>Produccion</td><td style="color:var(--red)">No recomendado</td><td style="color:var(--green)">Estandar</td></tr>
+          <tr><td>Desarrollo</td><td style="color:var(--green)">Perfecto</td><td>Posible</td></tr>
+        </tbody>
+      </table>
+      <p>SQLite es ideal para desarrollo y aprendizaje. En produccion usa PostgreSQL.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Asi NO vs Asi SI</p>
+      <h2>SQL plano vs ORM</h2>
+      <div class="comparison">
+        <div>
+          <h3>❌ SQL plano en el codigo</h3>
+          <pre><code>cursor.execute(
+  "SELECT * FROM courses WHERE id = ?",
+  (id,)
+)
+# Fragil, error-prone,
+# dificil de mantener</code></pre>
+        </div>
+        <div>
+          <h3>✅ ORM con SQLAlchemy</h3>
+          <pre><code>db.query(Course).filter(
+  Course.id == id
+).first()
+# Seguro, legible,
+# portable entre BD</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Troubleshooting</p>
+      <h2>Errores comunes con SQLAlchemy</h2>
+      <table>
+        <thead><tr><th>Error</th><th>Solucion</th></tr></thead>
+        <tbody>
+          <tr><td><code>sqlalchemy.exc.IntegrityError</code></td><td>Violacion de unicidad o FK. Revisa los datos.</td></tr>
+          <tr><td><code>DetachedInstanceError</code></td><td>Usaste un objeto fuera de la sesion. Usa <code>db.refresh()</code>.</td></tr>
+          <tr><td>La tabla no se crea</td><td>Falta <code>Base.metadata.create_all(bind=engine)</code></td></tr>
+          <tr><td><code>sqlite3.ProgrammingError</code></td><td>La BD esta bloqueada por otra operacion. Usa <code>check_same_thread=False</code></td></tr>
+          <tr><td><code>AttributeError: 'NoneType' has no attribute 'name'</code></td><td>La query devolvio None. Revisa si el registro existe.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Checklist</p>
+      <h2>Al salir de clase</h2>
+      <ul>
+        <li>[ ] Tengo database.py con engine, SessionLocal y Base.</li>
+        <li>[ ] Defini mi primer modelo SQLAlchemy.</li>
+        <li>[ ] Las tablas se crean al iniciar la app.</li>
+        <li>[ ] Uso la dependencia get_db para inyectar sesion.</li>
+        <li>[ ] Implemente CRUD completo en services.</li>
+        <li>[ ] Diferencia entre commit, flush y refresh.</li>
+        <li>[ ] Se la diferencia entre SQLite y PostgreSQL.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Actividad</p>
+      <h2>Migrar tu API de lista en memoria a BD</h2>
+      <ol>
+        <li>Agrega database.py a tu proyecto.</li>
+        <li>Convierte el modelo Pydantic a modelo SQLAlchemy.</li>
+        <li>Implementa get_db como dependencia.</li>
+        <li>Reemplaza la lista en memoria por consultas a la BD.</li>
+        <li>Verifica que los datos persisten al reiniciar.</li>
+      </ol>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Cierre</p>
+      <h2>Lo que debe quedar claro</h2>
+      <ul>
+        <li>SQLAlchemy es el ORM mas usado en Python.</li>
+        <li>Una sesion = una conexion a la BD por request.</li>
+        <li>Los modelos SQLAlchemy representan tablas.</li>
+        <li>CRUD se hace con: query, filter, add, commit, refresh.</li>
+      </ul>
+      <p class="callout callout--info"><strong>Proxima clase</strong> Relaciones entre modelos con SQLAlchemy.</p>
+    </section>
+
+  </main>
+
+  <nav class="controls">
+    <button type="button" id="prev" aria-label="Anterior">&lsaquo;</button>
+    <div class="dots" id="dots"></div>
+    <span id="counter">1 / 17</span>
+    <button type="button" id="next" aria-label="Siguiente">&rsaquo;</button>
+  </nav>
+
+  <script src="../../engine/slides.js"></script>
+</body>
+</html>

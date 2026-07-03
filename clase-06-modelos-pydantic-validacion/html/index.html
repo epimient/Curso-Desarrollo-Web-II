@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clase 06 - Modelos Pydantic y validacion de datos</title>
+  <link rel="stylesheet" href="../../engine/slides.css" />
+</head>
+<body>
+  <main class="deck">
+
+    <section class="slide slide--title is-active" data-slide>
+      <p class="eyebrow">Desarrollo Web II &middot; FastAPI</p>
+      <h1>Modelos Pydantic y validacion</h1>
+      <p class="subtitle">Field(), validadores personalizados, modelos anidados y manejo de errores de validacion.</p>
+      <p class="author">Ing. Eduardo Pimienta</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Objetivos</p>
+      <h2>Al finalizar esta clase podras</h2>
+      <ul>
+        <li>Usar Field() para agregar reglas de validacion a los modelos.</li>
+        <li>Escribir validadores personalizados con @field_validator.</li>
+        <li>Crear modelos anidados (un modelo dentro de otro).</li>
+        <li>Interpretar y solucionar el error 422.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Problema</p>
+      <h2>Sin validacion, datos basura entran a la API</h2>
+      <pre><code># ❌ Sin validacion: esto es aceptado
+{ "nombre": "", "creditos": 99 }
+
+# ✅ Con validacion: rechazado
+# nombre debe tener >= 3 caracteres
+# creditos debe ser entre 1 y 6</code></pre>
+      <p>La validacion es la primera linea de defensa de tu API.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Analogia</p>
+      <h2>Pydantic es un filtro de agua</h2>
+      <div class="flow">
+        <span class="flow-item" style="color:var(--red)">Datos sucios</span>
+        <span class="flow-item" style="color:var(--green)">Filtro Pydantic</span>
+        <span class="flow-item" style="color:var(--blue)">Datos limpios</span>
+      </div>
+      <p>El filtro revisa: tipo correcto?, rango valido?, campos requeridos presentes?. Si algo falla, corta el paso (error 422).</p>
+      <div class="callout callout--info"><strong>En español simple</strong> Pydantic es el portero de la discoteca: revisa que tengas la edad, el DNI y la entrada antes de dejarte pasar.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Field()</p>
+      <h2>Field(): reglas de validacion</h2>
+      <pre><code>from pydantic import BaseModel, Field
+
+class Curso(BaseModel):
+    nombre: str = Field(min_length=3, max_length=80)
+    creditos: int = Field(ge=1, le=6)
+    email: str = Field(pattern=r"^[\w.]+@[\w.]+\.\w+$")
+</code></pre>
+      <table>
+        <thead><tr><th>Parametro</th><th>Que hace</th></tr></thead>
+        <tbody>
+          <tr><td><code>min_length</code></td><td>Tamaño minimo del string</td></tr>
+          <tr><td><code>max_length</code></td><td>Tamaño maximo del string</td></tr>
+          <tr><td><code>ge</code></td><td>Mayor o igual (greater or equal)</td></tr>
+          <tr><td><code>le</code></td><td>Menor o igual (less or equal)</td></tr>
+          <tr><td><code>pattern</code></td><td>Expresion regular que debe cumplir</td></tr>
+          <tr><td><code>default</code></td><td>Valor por defecto si no se envia</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">@field_validator</p>
+      <h2>Validadores personalizados</h2>
+      <pre><code>from pydantic import field_validator
+
+class Usuario(BaseModel):
+    email: str
+    password: str
+
+    @field_validator("email")
+    @classmethod
+    def email_debe_ser_institucional(cls, v):
+        if not v.endswith("@universidad.edu"):
+            raise ValueError(
+                "Debe ser email institucional"
+            )
+        return v
+</code></pre>
+      <p>El validador recibe el valor, lo revisa y lo devuelve (o lanza error).</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Modelos anidados</p>
+      <h2>Un modelo dentro de otro</h2>
+      <pre><code>class Autor(BaseModel):
+    nombre: str
+    email: str
+
+class Libro(BaseModel):
+    titulo: str
+    autor: Autor       # ← modelo anidado
+
+class Biblioteca(BaseModel):
+    nombre: str
+    libros: list[Libro]  # ← lista de modelos
+</code></pre>
+      <p>Pydantic valida automaticamente todos los niveles de anidacion.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">model_config</p>
+      <h2>Configuracion del modelo</h2>
+      <pre><code>from pydantic import ConfigDict
+
+class Curso(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",   # ❌ rechaza campos extra
+        frozen=True,      # 🔒 inmutable
+    )
+
+    nombre: str
+    creditos: int</code></pre>
+      <div class="grid-2">
+        <div class="grid-item"><strong style="color:var(--orange)">extra="forbid"</strong><br />Rechaza campos no declarados</div>
+        <div class="grid-item"><strong style="color:var(--cyan)">frozen=True</strong><br />Impide modificar el objeto despues de creado</div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Error 422</p>
+      <h2>Entendiendo el error 422</h2>
+      <pre><code>{
+  "detail": [
+    {
+      "loc": ["body", "creditos"],
+      "msg": "Input should be a valid integer",
+      "type": "int_parsing"
+    }
+  ]
+}</code></pre>
+      <table>
+        <thead><tr><th>Campo</th><th>Significado</th></tr></thead>
+        <tbody>
+          <tr><td><code>loc</code></td><td>Donde esta el error (body, path, query)</td></tr>
+          <tr><td><code>msg</code></td><td>Mensaje del error en ingles</td></tr>
+          <tr><td><code>type</code></td><td>Tipo de error (valor faltante, tipo incorrecto)</td></tr>
+        </tbody>
+      </table>
+      <p>El error 422 es tu aliado: te dice exactamente que falta o esta mal.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Asi NO vs Asi SI</p>
+      <h2>Validacion basica vs avanzada</h2>
+      <div class="comparison">
+        <div>
+          <h3>❌ Sin validacion extra</h3>
+          <pre><code>class Curso(BaseModel):
+    nombre: str
+    # Acepta strings vacios
+    # Acepta creditos negativos</code></pre>
+        </div>
+        <div>
+          <h3>✅ Con Field() y validadores</h3>
+          <pre><code>class Curso(BaseModel):
+    nombre: str = Field(
+        min_length=3,
+        max_length=80
+    )
+    creditos: int = Field(ge=1, le=6)
+
+    @field_validator("nombre")
+    def no_espacios(cls, v):
+        if not v.strip():
+            raise ValueError(...)
+        return v</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Codigo completo</p>
+      <h2>Ejemplo: Libro con autor anidado</h2>
+      <pre><code>class AutorCreate(BaseModel):
+    nombre: str = Field(min_length=3)
+    email: str
+
+    @field_validator("email")
+    @classmethod
+    def validar_email(cls, v):
+        if "@" not in v:
+            raise ValueError("Email invalido")
+        return v
+
+class LibroCreate(BaseModel):
+    titulo: str = Field(min_length=1)
+    autor: AutorCreate
+    anio: int = Field(ge=1900, le=2030)</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Troubleshooting</p>
+      <h2>Errores comunes con Pydantic</h2>
+      <table>
+        <thead><tr><th>Error</th><th>Solucion</th></tr></thead>
+        <tbody>
+          <tr><td>"field required"</td><td>Falta el campo en el JSON. Revisa el modelo.</td></tr>
+          <tr><td>"extra fields not permitted"</td><td>Enviaste campos extras. Usa <code>extra="forbid"</code> o eliminalos.</td></tr>
+          <tr><td>"Input should be a valid integer"</td><td>Enviaste texto donde se espera numero.</td></tr>
+          <tr><td>"String should have at least X characters"</td><td>El texto es muy corto. Aumenta o revisa el input.</td></tr>
+          <tr><td>ValueError en validador propio</td><td>Tu <code>@field_validator</code> lanzo una excepcion. Revisa la logica.</td></tr>
+          <tr><td>TypeError: Pydantic v1 vs v2</td><td>En v2 se usa <code>@field_validator</code> (no <code>@validator</code>).</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Checklist</p>
+      <h2>Al salir de clase</h2>
+      <ul>
+        <li>[ ] Se usar Field() con min_length, max_length, ge, le.</li>
+        <li>[ ] Escribi un @field_validator personalizado.</li>
+        <li>[ ] Cree un modelo anidado (ej: Libro con Autor).</li>
+        <li>[ ] Configure extra="forbid" o frozen en model_config.</li>
+        <li>[ ] Se leer y entender el error 422.</li>
+        <li>[ ] Distingo Pydantic v1 (validator) vs v2 (field_validator).</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Actividad</p>
+      <h2>API de eventos con validacion estricta</h2>
+      <ol>
+        <li>Crea un modelo <code>EventoCreate</code> con: nombre (3-100 chars), fecha (formato ISO), capacidad (1-1000).</li>
+        <li>Agrega un validador que impida crear eventos en el pasado.</li>
+        <li>Crea un modelo <code>Organizador</code> con nombre y email valido.</li>
+        <li>Anida Organizador dentro de EventoCreate.</li>
+        <li>Configura el modelo para rechazar campos extra.</li>
+      </ol>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Cierre</p>
+      <h2>Lo que debe quedar claro</h2>
+      <ul>
+        <li>Field() define reglas basicas: rangos, longitudes, patrones.</li>
+        <li>@field_validator crea reglas personalizadas (logica condicional).</li>
+        <li>Los modelos anidados permiten estructuras complejas.</li>
+        <li>El error 422 es descriptivo: usalo para depurar.</li>
+      </ul>
+      <p class="callout callout--info"><strong>Proxima clase</strong> Persistencia de datos con SQLAlchemy.</p>
+    </section>
+
+  </main>
+
+  <nav class="controls">
+    <button type="button" id="prev" aria-label="Anterior">&lsaquo;</button>
+    <div class="dots" id="dots"></div>
+    <span id="counter">1 / 15</span>
+    <button type="button" id="next" aria-label="Siguiente">&rsaquo;</button>
+  </nav>
+
+  <script src="../../engine/slides.js"></script>
+</body>
+</html>

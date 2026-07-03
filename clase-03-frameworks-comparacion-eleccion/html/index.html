@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clase 03 - Frameworks: comparacion y eleccion</title>
+  <link rel="stylesheet" href="../../engine/slides.css" />
+</head>
+<body>
+  <main class="deck">
+
+    <section class="slide slide--title is-active" data-slide>
+      <p class="eyebrow">Desarrollo Web II &middot; FastAPI</p>
+      <h1>Frameworks: comparacion y eleccion</h1>
+      <p class="subtitle">Analisis comparativo de frameworks web Python y criterios para elegir el adecuado.</p>
+      <p class="author">Ing. Eduardo Pimienta</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Objetivos</p>
+      <h2>Al finalizar esta clase podras</h2>
+      <ul>
+        <li>Comparar FastAPI, Flask, Django y Bottle segun criterios tecnicos.</li>
+        <li>Justificar por que FastAPI es la opcion para este curso.</li>
+        <li>Identificar el ecosistema de herramientas que acompanan a FastAPI.</li>
+        <li>Elegir un framework segun el tipo de proyecto.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Problema</p>
+      <h2>¿Que problema resuelven los frameworks?</h2>
+      <ul>
+        <li>Sin framework: escribes HTTP, routing, validacion, serializacion desde cero.</li>
+        <li>Con framework: te preocupas solo de la logica de tu negocio.</li>
+        <li>El framework estandariza: rutas, respuestas, errores, seguridad.</li>
+      </ul>
+      <div class="callout callout--info"><strong>En español simple</strong> Un framework es como una cocina industrial: tiene horno, hornallas, heladera y utensilios. Tu solo te preocupas de cocinar.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Analogia</p>
+      <h2>Frameworks como vehiculos</h2>
+      <div class="grid-2">
+        <div class="grid-item"><strong style="color:var(--orange)">Bottle</strong><br />Bicicleta: ligera, una sola ruta, ideal para aprender.</div>
+        <div class="grid-item"><strong style="color:var(--yellow)">Flask</strong><br />Auto compacto: facil de manejar, buena comunidad.</div>
+        <div class="grid-item"><strong style="color:var(--cyan)">FastAPI</strong><br />Camioneta moderna: rapida, segura, con todas las prestaciones.</div>
+        <div class="grid-item"><strong style="color:var(--purple)">Django</strong><br />Camion con acoplado: trae todo incluido, pesado de arrancar.</div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Comparacion</p>
+      <h2>Tabla comparativa</h2>
+      <table>
+        <thead><tr><th>Criterio</th><th>FastAPI</th><th>Flask</th><th>Django</th><th>Bottle</th></tr></thead>
+        <tbody>
+          <tr><td>Rendimiento</td><td style="color:var(--green)">Alto</td><td>Medio</td><td>Medio</td><td style="color:var(--green)">Alto</td></tr>
+          <tr><td>Validacion</td><td style="color:var(--green)">Automatica</td><td>Manual</td><td>Forms/DRF</td><td>Manual</td></tr>
+          <tr><td>Documentacion</td><td style="color:var(--green)">Automatica</td><td>Manual</td><td>Manual</td><td>Manual</td></tr>
+          <tr><td>Curva de aprendizaje</td><td style="color:var(--green)">Baja</td><td style="color:var(--green)">Baja</td><td>Alta</td><td style="color:var(--green)">Baja</td></tr>
+          <tr><td>Ecosistema</td><td>Pydantic</td><td>Jinja, SQLAlchemy</td><td>ORM, Admin, Auth</td><td>Minimo</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Criterios de eleccion</p>
+      <h2>¿Como elegir un framework?</h2>
+      <ul>
+        <li><strong>Tipo de proyecto:</strong> API pura? Frontend incluido? Microservicio?</li>
+        <li><strong>Rendimiento:</strong> Esperas miles o millones de requests?</li>
+        <li><strong>Equipo:</strong> Junior? Senior? Necesitas documentacion automatica?</li>
+        <li><strong>Tiempo:</strong> Lanzamiento rapido o proyecto a largo plazo?</li>
+        <li><strong>Ecosistema:</strong> Que librerias necesitas? BD, auth, testing?</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">FastAPI</p>
+      <h2>¿Por que FastAPI para este curso?</h2>
+      <div class="tags">
+        <span class="tag">Python moderno</span>
+        <span class="tag">Type hints</span>
+        <span class="tag">Pydantic</span>
+        <span class="tag">OpenAPI</span>
+        <span class="tag">Async</span>
+        <span class="tag">Testing facil</span>
+      </div>
+      <p>FastAPI combina lo mejor de Flask (simplicidad) y Django (potencia) con rendimiento de alto nivel.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">OpenAPI</p>
+      <h2>Documentacion automatica: el as bajo la manga</h2>
+      <div class="flow">
+        <span class="flow-item">Tu codigo</span>
+        <span class="flow-item" style="color:var(--green)">FastAPI</span>
+        <span class="flow-item" style="color:var(--orange)">OpenAPI JSON</span>
+        <span class="flow-item" style="color:var(--cyan)">Swagger UI</span>
+      </div>
+      <pre><code># Sin escribir ni una linea extra:
+http://localhost:8000/docs   # Swagger UI
+http://localhost:8000/redoc  # ReDoc</code></pre>
+      <p>OpenAPI es el estandar de la industria para documentar APIs. FastAPI lo genera automaticamente.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Async</p>
+      <h2>Async / Await: rendimiento nativo</h2>
+      <pre><code>@app.get("/async")
+async def leer_datos():
+    data = await db.fetch("SELECT ...")
+    return data
+</code></pre>
+      <p>FastAPI soporta async de forma nativa. Mientras una request espera a la BD, otra puede avanzar. Esto multiplica la capacidad del servidor.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Ecosistema</p>
+      <h2>Herramientas que acompanan a FastAPI</h2>
+      <table>
+        <thead><tr><th>Problema</th><th>Solucion</th></tr></thead>
+        <tbody>
+          <tr><td>Validacion de datos</td><td>Pydantic v2</td></tr>
+          <tr><td>Base de datos</td><td>SQLAlchemy 2.0</td></tr>
+          <tr><td>Migraciones</td><td>Alembic</td></tr>
+          <tr><td>Testing</td><td>pytest + httpx</td></tr>
+          <tr><td>Auth</td><td>python-jose + passlib</td></tr>
+          <tr><td>Despliegue</td><td>Render + Supabase</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Asi NO vs Asi SI</p>
+      <h2>Errores al elegir framework</h2>
+      <div class="comparison">
+        <div>
+          <h3>❌ Elegir por moda</h3>
+          <p>"Todo el mundo usa Django, asi que lo usamos." Sin evaluar si es la herramienta correcta.</p>
+        </div>
+        <div>
+          <h3>✅ Elegir por criterios</h3>
+          <p>"Necesitamos una API rapida con validacion automatica y documentacion. FastAPI es la mejor opcion."</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Actividad</p>
+      <h2>Investigar y comparar</h2>
+      <ol>
+        <li>Elige un framework NO visto en clase (Ej: Sanic, Starlette, Tornado).</li>
+        <li>Investiga: rendimiento, documentacion, comunidad, casos de uso.</li>
+        <li>Completa una fila en la tabla comparativa de la clase.</li>
+        <li>Prepara 2 argumentos a favor y 2 en contra de usarlo.</li>
+      </ol>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Troubleshooting</p>
+      <h2>Errores de concepto</h2>
+      <table>
+        <thead><tr><th>Error</th><th>Realidad</th></tr></thead>
+        <tbody>
+          <tr><td>"FastAPI es solo para async"</td><td>Soporta sync y async, tu eliges.</td></tr>
+          <tr><td>"Flask es mas rapido porque es mas simple"</td><td>FastAPI es mas rapido gracias a Starlette.</td></tr>
+          <tr><td>"Django es el unico profesional"</td><td>Profesional es elegir la herramienta correcta.</td></tr>
+          <tr><td>"Necesito Django si quiero ORM"</td><td>SQLAlchemy funciona con cualquier framework.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Cierre</p>
+      <h2>Lo que debe quedar claro</h2>
+      <ul>
+        <li>Cada framework tiene un perfil: rapido, completo, minimalista.</li>
+        <li>FastAPI ofrece el mejor equilibrio para APIs modernas.</li>
+        <li>La decision debe basarse en criterios, no en moda.</li>
+        <li>FastAPI tiene un ecosistema solido: Pydantic, SQLAlchemy, Alembic.</li>
+      </ul>
+      <p class="callout callout--info"><strong>Proxima clase</strong> Instalacion y primer proyecto FastAPI.</p>
+    </section>
+
+  </main>
+
+  <nav class="controls">
+    <button type="button" id="prev" aria-label="Anterior">&lsaquo;</button>
+    <div class="dots" id="dots"></div>
+    <span id="counter">1 / 14</span>
+    <button type="button" id="next" aria-label="Siguiente">&rsaquo;</button>
+  </nav>
+
+  <script src="../../engine/slides.js"></script>
+</body>
+</html>

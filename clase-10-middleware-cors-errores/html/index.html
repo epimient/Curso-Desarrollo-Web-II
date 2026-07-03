@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clase 10 - Middleware, CORS y manejo global de errores</title>
+  <link rel="stylesheet" href="../../engine/slides.css" />
+</head>
+<body>
+  <main class="deck">
+
+    <section class="slide slide--title is-active" data-slide>
+      <p class="eyebrow">Desarrollo Web II &middot; FastAPI</p>
+      <h1>Middleware, CORS y errores</h1>
+      <p class="subtitle">Capas de procesamiento global, seguridad de origenes y respuestas de error consistentes.</p>
+      <p class="author">Ing. Eduardo Pimienta</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Objetivos</p>
+      <h2>Al finalizar esta clase podras</h2>
+      <ul>
+        <li>Crear un middleware personalizado para logging y medicion.</li>
+        <li>Configurar CORS para conectar un frontend con la API.</li>
+        <li>Personalizar los mensajes de error HTTP y de validacion.</li>
+        <li>Usar el patron lifespan para inicializacion ordenada.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Problema</p>
+      <h2>Tres problemas que resolveremos hoy</h2>
+      <div class="grid-3">
+        <div class="grid-item" style="border-color:var(--red)">
+          <strong style="color:var(--red)">🔴 CORS</strong><br />
+          El frontend no puede hablar con la API por seguridad del navegador.
+        </div>
+        <div class="grid-item" style="border-color:var(--orange)">
+          <strong style="color:var(--orange)">🟡 Errores feos</strong><br />
+          Los errores 422 devuelven JSON confusos sin formato claro.
+        </div>
+        <div class="grid-item" style="border-color:var(--cyan)">
+          <strong style="color:var(--cyan)">🔵 Sin logging</strong><br />
+          No sabes que endpoints se llaman ni cuanto tardan.
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Analogia</p>
+      <h2>Capas de cebolla / Filtros de tuberia</h2>
+      <p>Un middleware es como una capa mas de la cebolla. Cada request pasa por todas las capas al entrar y al salir.</p>
+      <div class="flow">
+        <span class="flow-item" style="color:var(--red)">Request</span>
+        <span class="flow-item" style="color:var(--orange)">Logging</span>
+        <span class="flow-item" style="color:var(--cyan)">CORS</span>
+        <span class="flow-item" style="color:var(--green)">Endpoint</span>
+        <span class="flow-item" style="color:var(--cyan)">CORS</span>
+        <span class="flow-item" style="color:var(--orange)">Logging</span>
+        <span class="flow-item" style="color:var(--green)">Response</span>
+      </div>
+      <div class="callout callout--info"><strong>En español simple</strong> Un middleware es un filtro por el que pasa TODA peticion. Puedes hacer cosas antes (log) y despues (agregar header) de que el endpoint procese la request.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Middleware</p>
+      <h2>Middleware personalizado con @app.middleware</h2>
+      <pre><code>import time
+from fastapi import Request
+
+@app.middleware("http")
+async def add_process_time(
+    request: Request, call_next
+):
+    inicio = time.perf_counter()
+    response = await call_next(request)
+    tiempo = time.perf_counter() - inicio
+    response.headers["X-Process-Time"] = f"{tiempo:.4f}"
+    return response
+</code></pre>
+      <table>
+        <thead><tr><th>Parte</th><th>Que hace</th></tr></thead>
+        <tbody>
+          <tr><td><code>@app.middleware("http")</code></td><td>Registra la funcion como middleware</td></tr>
+          <tr><td><code>call_next</code></td><td>Pasa la request al siguiente en la cadena</td></tr>
+          <tr><td><code>await call_next(request)</code></td><td>Obligatorio: sin esto la request nunca llega al endpoint</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Asi NO vs Asi SI</p>
+      <h2>Middleware: el error mas comun</h2>
+      <div class="comparison">
+        <div>
+          <h3>❌ Sin call_next</h3>
+          <pre><code>@app.middleware("http")
+async def malo(r, call_next):
+    print("Request")
+    # FALTA: await call_next(r)
+    # El cliente se queda
+    # esperando para siempre</code></pre>
+        </div>
+        <div>
+          <h3>✅ Con call_next</h3>
+          <pre><code>@app.middleware("http")
+async def bueno(r, call_next):
+    print("Antes")
+    resp = await call_next(r)
+    print("Despues")
+    return resp</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">CORS</p>
+      <h2>CORS: el bar con lista de invitados</h2>
+      <div class="callout callout--info"><strong>En español simple</strong> CORS es un mecanismo del navegador. Cuando tu frontend en localhost:5173 habla con tu backend en localhost:8000, el navegador dice: "Son origenes diferentes. ¿El backend acepta visitas de este origen?"</div>
+      <pre><code>from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)</code></pre>
+      <p>Sin CORS: el frontend recibe error en consola. Con CORS: el backend dice explicitamente "si, este origen puede acceder".</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Preflight</p>
+      <h2>Preflight OPTIONS: la llamada de prueba</h2>
+      <div class="flow">
+        <span class="flow-item" style="color:var(--orange)">Frontend</span>
+        <span class="flow-item" style="color:var(--green)">OPTIONS /courses</span>
+        <span class="flow-item" style="color:var(--blue)">Backend</span>
+        <span class="flow-item" style="color:var(--green)">200 + headers CORS</span>
+        <span class="flow-item" style="color:var(--cyan)">DELETE real</span>
+      </div>
+      <p>Antes de enviar un DELETE (o request con headers custom), el navegador hace una pregunta timida con OPTIONS. Si el backend responde bien, procede con la request real.</p>
+      <div class="callout callout--ok"><strong>Tip</strong> FastAPI + CORSMiddleware maneja el preflight automaticamente. No necesitas hacer nada extra.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Errores</p>
+      <h2>Manejo global de errores: central de alarmas</h2>
+      <div class="comparison">
+        <div>
+          <h3>❌ Error 422 default</h3>
+          <pre><code>{
+  "detail": [
+    {"loc": ["body","name"],
+     "msg": "field required",
+     "type": "value_error"}
+  ]
+}</code></pre>
+          <p>Confuso para el usuario.</p>
+        </div>
+        <div>
+          <h3>✅ Error 422 personalizado</h3>
+          <pre><code>{
+  "error": true,
+  "codigo": 422,
+  "mensaje": "Datos invalidos",
+  "detalles": [
+    "body -> name: field required"
+  ]
+}</code></pre>
+          <p>Claro y consistente.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Exception handlers</p>
+      <h2>Personalizar errores con @app.exception_handler</h2>
+      <pre><code>from fastapi.exceptions import RequestValidationError
+
+@app.exception_handler(RequestValidationError)
+async def validation_handler(
+    request: Request, exc: RequestValidationError
+):
+    errores = []
+    for error in exc.errors():
+        campo = " -> ".join(str(l) for l in error["loc"])
+        errores.append(f"{campo}: {error['msg']}")
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": True,
+            "codigo": 422,
+            "mensaje": "Datos invalidos",
+            "detalles": errores,
+        },
+    )</code></pre>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Excepciones propias</p>
+      <h2>Crear excepciones personalizadas</h2>
+      <pre><code>class NotFoundException(HTTPException):
+    def __init__(self, recurso: str, id: int):
+        super().__init__(
+            status_code=404,
+            detail=f"{recurso} con id {id} no encontrado",
+        )
+
+class ForbiddenException(HTTPException):
+    def __init__(self, msg="No tienes permisos"):
+        super().__init__(status_code=403, detail=msg)
+
+# Uso:
+raise NotFoundException("Course", course_id)</code></pre>
+      <p>En lugar de escribir <code>raise HTTPException(404, "Course not found")</code> cada vez, usas tu propia excepcion con el mensaje incluido.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Lifespan</p>
+      <h2>Lifespan: startup y shutdown</h2>
+      <pre><code>from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ── STARTUP ──
+    print("Iniciando API...")
+    Base.metadata.create_all(bind=engine)
+    yield
+    # ── SHUTDOWN ──
+    print("API detenida.")
+
+app = FastAPI(lifespan=lifespan)
+</code></pre>
+      <div class="callout callout--info"><strong>En español simple</strong> El lifespan define que pasa cuando la app arranca (crear tablas, conectar servicios) y cuando se apaga (cerrar conexiones). Es como abrir y cerrar el local cada dia.</div>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">TrustedHost</p>
+      <h2>TrustedHostMiddleware: seguridad extra</h2>
+      <pre><code>from fastapi.middleware.trustedhost import TrustedHostMiddleware
+
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["localhost", "127.0.0.1", ".miapp.com"],
+)</code></pre>
+      <p>Protege contra ataques de "Host Header Injection". Solo acepta requests de hosts en la lista.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Orden</p>
+      <h2>Orden recomendado de middlewares</h2>
+      <pre><code># 1. Seguridad
+app.add_middleware(TrustedHostMiddleware, ...)
+# 2. CORS
+app.add_middleware(CORSMiddleware, ...)
+# 3. Personalizados
+app.add_middleware(LoggingMiddleware)
+
+# 4. Error handlers
+register_error_handlers(app)
+
+# 5. Routers
+app.include_router(...)</code></pre>
+      <p>El orden importa. El primer middleware agregado es el primero en recibir la request.</p>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Troubleshooting</p>
+      <h2>Errores comunes con middleware y CORS</h2>
+      <table>
+        <thead><tr><th>Error</th><th>Solucion</th></tr></thead>
+        <tbody>
+          <tr><td>Sin header Access-Control-Allow-Origin</td><td>Falta CORSMiddleware o allow_origins mal configurado</td></tr>
+          <tr><td>Invalid Host Header</td><td>TrustedHostMiddleware no incluye ese host</td></tr>
+          <tr><td>Middleware no se ejecuta</td><td>Falta <code>await call_next(request)</code></td></tr>
+          <tr><td>Errores 422 con formato default</td><td>No registraste el handler de RequestValidationError</td></tr>
+          <tr><td>CORS con allow_origins=["*"] y credentials=True</td><td>No se puede. Usa origenes explicitos.</td></tr>
+          <tr><td>Lifespan no funciona</td><td>Falta <code>yield</code> dentro del context manager</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Checklist</p>
+      <h2>Al salir de clase</h2>
+      <ul>
+        <li>[ ] Configure CORSMiddleware para mi frontend.</li>
+        <li>[ ] Cree un middleware personalizado (logging + process time).</li>
+        <li>[ ] Personalice los errores 422 y 500.</li>
+        <li>[ ] Use excepciones personalizadas (NotFoundException, etc).</li>
+        <li>[ ] Migre de @app.on_event a lifespan.</li>
+        <li>[ ] Configure TrustedHostMiddleware.</li>
+        <li>[ ] Se el orden correcto de middlewares.</li>
+      </ul>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Actividad</p>
+      <h2>Refactor final: agrega middleware y CORS</h2>
+      <ol>
+        <li>Agrega CORSMiddleware a tu proyecto con los origenes de tu frontend.</li>
+        <li>Crea un middleware de logging que registre metodo, path y status.</li>
+        <li>Personaliza el error 422 para que sea mas legible.</li>
+        <li>Implementa NotFoundException y usala en services.</li>
+        <li>Migra a lifespan con asynccontextmanager.</li>
+        <li>Verifica los response headers (CORS) desde Swagger UI.</li>
+      </ol>
+    </section>
+
+    <section class="slide" data-slide>
+      <p class="eyebrow">Cierre</p>
+      <h2>Lo que debe quedar claro</h2>
+      <ul>
+        <li>Middleware = filtro global para todas las rutas.</li>
+        <li>CORS es del navegador, no de la API. Postman no lo tiene.</li>
+        <li>Los exception handlers centralizan el formato de errores.</li>
+        <li>Lifespan reemplaza a @app.on_event (deprecado).</li>
+        <li>El orden de middlewares importa.</li>
+      </ul>
+      <p class="callout callout--info"><strong>Proxima clase</strong> Testing con pytest y httpx.</p>
+    </section>
+
+  </main>
+
+  <nav class="controls">
+    <button type="button" id="prev" aria-label="Anterior">&lsaquo;</button>
+    <div class="dots" id="dots"></div>
+    <span id="counter">1 / 17</span>
+    <button type="button" id="next" aria-label="Siguiente">&rsaquo;</button>
+  </nav>
+
+  <script src="../../engine/slides.js"></script>
+</body>
+</html>

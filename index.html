@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Desarrollo Web II &mdash; FastAPI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="landing.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+
+<script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script defer src="data.js"></script>
+<script defer src="landing.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <button class="topbar-btn" id="sidebarToggle" title="Alternar explorador">&#9776;</button>
+  <button class="topbar-btn" id="homeBtn" title="Volver al inicio">&larrhk; Inicio</button>
+  <span class="topbar-brand brand">Desarrollo Web&nbsp;II&nbsp;<span>FastAPI</span></span>
+  <span class="topbar-spacer"></span>
+  <span class="topbar-path" id="topbarPath"></span>
+</header>
+
+<div class="body-wrap">
+
+  <aside class="sidebar" id="sidebar">
+    <div id="sidebarTree"></div>
+  </aside>
+
+  <main class="main" id="main">
+
+    <div id="landing-view"></div>
+
+    <div id="iframe-view">
+      <div id="iframe-toolbar">
+        <button class="back-btn" id="iframeBack">&larr; Volver</button>
+        <span class="label" id="iframeLabel"></span>
+      </div>
+      <div id="iframe-box">
+        <iframe id="contentFrame" loading="lazy"></iframe>
+      </div>
+    </div>
+
+    <div id="markdown-view">
+      <div id="md-toolbar">
+        <button class="back-btn" id="mdBack">&larr; Volver</button>
+        <span class="label" id="mdLabel"></span>
+      </div>
+      <div id="md-content"></div>
+    </div>
+
+  </main>
+</div>
+
+</body>
+</html>
