@@ -1,3 +1,36 @@
+// ─── HASH ROUTING ───
+function hashFor(c, action) {
+  return '#/clase-' + String(c.n).padStart(2, '0') + '/' + action;
+}
+
+function parseHash() {
+  const m = location.hash.match(/^#\/clase-(\d+)\/(\w+)$/);
+  if (!m) return null;
+  return { n: parseInt(m[1]), action: m[2] };
+}
+
+function updateHash(hash) {
+  history.replaceState(null, '', hash || '.');
+}
+
+// ─── PATH / LABEL HELPERS ───
+function pathFor(c, action) {
+  const dir = './' + c.dir;
+  const map = {
+    slides: c.slides, doc: c.doc, example: c.example,
+    exercises: c.ex, faq: c.faq,
+  };
+  return dir + '/' + (map[action] || c.slides);
+}
+
+function labelFor(c, action) {
+  const map = {
+    slides: 'Slides', doc: 'Documento', example: 'Ejemplo guiado',
+    exercises: 'Ejercicios', faq: 'FAQ',
+  };
+  return c.n + '. ' + c.title + ' &mdash; ' + (map[action] || 'Slides');
+}
+
 // ─── STATE ───
 let navStack = [];
 let sidebarVisible = window.innerWidth > 768;
@@ -47,8 +80,8 @@ function buildLanding(){
     sec.querySelectorAll('.card').forEach(el => {
       el.addEventListener('click', () => {
         const cn = parseInt(el.dataset.class);
-        const cls = findClass(cn);
-        if(cls) openSlides(cls);
+        const c = findClass(cn);
+        if(c) navigateTo(c.n, 'slides');
       });
     });
   });
@@ -98,22 +131,7 @@ function buildSidebar(){
       e.preventDefault();
       const cls = parseInt(a.dataset.class);
       const action = a.dataset.action;
-      const c = findClass(cls);
-      if(!c) return;
-      const dir = './'+c.dir;
-      const paths = {
-        slides:dir+'/'+c.slides,
-        doc:dir+'/'+c.doc,
-        example:dir+'/'+c.example,
-        exercises:dir+'/'+c.ex,
-        faq:dir+'/'+c.faq,
-      };
-      const url = paths[action]||paths.slides;
-      const label = action==='slides'
-        ? `${c.n}. ${c.title} &mdash; Slides`
-        : `${c.n}. ${c.title} &mdash; ${action.charAt(0).toUpperCase()+action.slice(1)}`;
-      if(action==='slides') loadContent(url,label);
-      else loadContent(url,label);
+      navigateTo(cls, action);
       tree.querySelectorAll('.tree-subs a').forEach(x => x.classList.remove('active'));
       a.classList.add('active');
     });
@@ -125,81 +143,77 @@ function buildSidebar(){
       setTimeout(() => {
         const cls = parseInt(details.dataset.class);
         const c = findClass(cls);
-        if(c) openSlides(c);
+        if(c) navigateTo(c.n, 'slides');
       }, 50);
     });
   });
 }
 
-// ─── HELPERS ───
-function findClass(n){
-  for(const u of UNITS) for(const c of u.classes) if(c.n===n) return c;
-  return null;
-}
-
-function openSlides(c){
-  const url = './'+c.dir+'/'+c.slides;
-  loadContent(url,`${c.n}. ${c.title} &mdash; Slides`);
-  document.querySelectorAll('.tree-subs a').forEach(x => x.classList.remove('active'));
-  const link = document.querySelector(`.tree-subs a[data-class="${c.n}"][data-action="slides"]`);
-  if(link) link.classList.add('active');
-  const details = document.querySelector(`.tree-item[data-class="${c.n}"]`);
-  if(details) details.open = true;
-  if(!sidebarVisible) toggleSidebar();
-}
-
-function loadContent(url,label){
-  const isMd = url.match(/\.md($|\?)/);
-  if(isMd) loadMarkdown(url,label);
-  else loadIframe(url,label);
-}
-
-function loadIframe(url,label){
-  const frame = document.getElementById('contentFrame');
-  const iframeView = document.getElementById('iframe-view');
-  const mdView = document.getElementById('markdown-view');
-  const landing = document.getElementById('landing-view');
-  mdView.classList.remove('show');
-  frame.src = url;
-  document.getElementById('iframeLabel').innerHTML = label;
-  document.getElementById('topbarPath').textContent = url;
-  landing.style.display = 'none';
-  iframeView.classList.add('show');
-  navStack.push({url,label,type:'html'});
+// ─── NAVIGATION ───
+function navigateTo(clsNum, action) {
+  const c = findClass(clsNum);
+  if (!c) return;
+  const url = pathFor(c, action);
+  const label = labelFor(c, action);
+  updateHash(hashFor(c, action));
+  _load(url, label);
+  _highlightSidebar(clsNum, action);
+  navStack.push({ clsNum, action });
   updateBackBtn();
 }
 
-async function loadMarkdown(url,label){
-  const mdView = document.getElementById('markdown-view');
+function _load(url, label) {
   const iframeView = document.getElementById('iframe-view');
+  const mdView = document.getElementById('markdown-view');
   const landing = document.getElementById('landing-view');
   iframeView.classList.remove('show');
+  mdView.classList.remove('show');
   landing.style.display = 'none';
-  mdView.classList.add('show');
-  document.getElementById('mdLabel').innerHTML = label;
   document.getElementById('topbarPath').textContent = url;
-  navStack.push({url,label,type:'md'});
-  updateBackBtn();
-  document.getElementById('md-content').innerHTML = '<p style="color:var(--text-muted)">Cargando...</p>';
-  try{
-    const res = await fetch(url);
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const md = await res.text();
-    const processed = md
-      .replace(/:::(\w+)\s*\n([\s\S]*?):::/g,'<div class="callout callout--$1">$2</div>')
-      .replace(/\[!(\w+)\]\s*\n([\s\S]*?)(?=\n\n|$)/g,'<div class="callout callout--$1">$2</div>');
-    let html = marked.parse(processed,{breaks:true,gfm:true});
-    document.getElementById('md-content').innerHTML = html;
-    if(typeof hljs!=='undefined'){
-      document.querySelectorAll('#md-content pre code').forEach(b => hljs.highlightElement(b));
-    }
-  }catch(e){
-    document.getElementById('md-content').innerHTML =
-      '<div class="callout callout--error"><strong>Error al cargar</strong><br>'+e.message+'</div>';
+
+  const isMd = url.match(/\.md($|\?)/);
+  if (isMd) {
+    mdView.classList.add('show');
+    document.getElementById('mdLabel').innerHTML = label;
+    _renderMarkdown(url);
+  } else {
+    iframeView.classList.add('show');
+    document.getElementById('contentFrame').src = url;
+    document.getElementById('iframeLabel').innerHTML = label;
   }
 }
 
-function showLanding(){
+async function _renderMarkdown(url) {
+  document.getElementById('md-content').innerHTML = '<p style="color:var(--text-muted)">Cargando...</p>';
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const md = await res.text();
+    const processed = md
+      .replace(/:::(\w+)\s*\n([\s\S]*?):::/g, '<div class="callout callout--$1">$2</div>')
+      .replace(/\[!(\w+)\]\s*\n([\s\S]*?)(?=\n\n|$)/g, '<div class="callout callout--$1">$2</div>');
+    const html = marked.parse(processed, { breaks: true, gfm: true });
+    document.getElementById('md-content').innerHTML = html;
+    if (typeof hljs !== 'undefined') {
+      document.querySelectorAll('#md-content pre code').forEach(b => hljs.highlightElement(b));
+    }
+  } catch (e) {
+    document.getElementById('md-content').innerHTML =
+      '<div class="callout callout--error"><strong>Error al cargar</strong><br>' + e.message + '</div>';
+  }
+}
+
+function _highlightSidebar(clsNum, action) {
+  document.querySelectorAll('.tree-subs a').forEach(x => x.classList.remove('active'));
+  const link = document.querySelector(
+    '.tree-subs a[data-class="' + clsNum + '"][data-action="' + action + '"]'
+  );
+  if (link) link.classList.add('active');
+  const details = document.querySelector('.tree-item[data-class="' + clsNum + '"]');
+  if (details) details.open = true;
+}
+
+function showLanding() {
   const iframeView = document.getElementById('iframe-view');
   const mdView = document.getElementById('markdown-view');
   const landing = document.getElementById('landing-view');
@@ -207,45 +221,67 @@ function showLanding(){
   mdView.classList.remove('show');
   landing.style.display = 'block';
   document.getElementById('topbarPath').textContent = '';
+  document.getElementById('contentFrame').src = '';
   navStack = [];
   updateBackBtn();
-  document.getElementById('contentFrame').src = '';
+  updateHash('.');
 }
 
-function goBack(){
-  if(navStack.length<=1){ showLanding(); return; }
+function goBack() {
+  if (navStack.length <= 1) { showLanding(); return; }
   navStack.pop();
-  const prev = navStack[navStack.length-1];
-  if(prev){
-    const frame = document.getElementById('contentFrame');
-    frame.src = prev.url;
-    document.getElementById('iframeLabel').innerHTML = prev.label;
-    document.getElementById('topbarPath').textContent = prev.url;
-  }
+  const prev = navStack[navStack.length - 1];
+  const c = findClass(prev.clsNum);
+  if (!c) return;
+  const url = pathFor(c, prev.action);
+  const label = labelFor(c, prev.action);
+  updateHash(hashFor(c, prev.action));
+  _load(url, label);
+  _highlightSidebar(prev.clsNum, prev.action);
   updateBackBtn();
 }
 
-function updateBackBtn(){
-  document.getElementById('homeBtn').disabled = navStack.length===0;
+function updateBackBtn() {
+  document.getElementById('homeBtn').disabled = navStack.length === 0;
 }
 
-function toggleSidebar(){
+function toggleSidebar() {
   sidebarVisible = !sidebarVisible;
   document.getElementById('sidebar').classList.toggle('hidden');
 }
 
+function findClass(n) {
+  for (const u of UNITS) for (const c of u.classes) if (c.n === n) return c;
+  return null;
+}
+
+// ─── HASH ROUTING ───
+window.addEventListener('hashchange', () => {
+  const parsed = parseHash();
+  if (!parsed) { showLanding(); return; }
+  navStack = [];
+  updateBackBtn();
+  navigateTo(parsed.n, parsed.action);
+});
+
 // ─── INIT ───
 buildLanding();
 buildSidebar();
-if(!sidebarVisible) document.getElementById('sidebar').classList.add('hidden');
+if (!sidebarVisible) document.getElementById('sidebar').classList.add('hidden');
 updateBackBtn();
 
+// Restore hash on load
+const initialHash = parseHash();
+if (initialHash) {
+  navigateTo(initialHash.n, initialHash.action);
+}
+
 // ─── EVENT BINDINGS ───
-document.getElementById('sidebarToggle').addEventListener('click',toggleSidebar);
-document.getElementById('homeBtn').addEventListener('click',showLanding);
-document.getElementById('iframeBack').addEventListener('click',goBack);
-document.getElementById('mdBack').addEventListener('click',goBack);
+document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
+document.getElementById('homeBtn').addEventListener('click', showLanding);
+document.getElementById('iframeBack').addEventListener('click', goBack);
+document.getElementById('mdBack').addEventListener('click', goBack);
 
 document.addEventListener('keydown', e => {
-  if(e.key==='Escape') goBack();
+  if (e.key === 'Escape') goBack();
 });
