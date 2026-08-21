@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Clase 00 - Introduccion a Python, APIs y FastAPI</title>
+<link rel="stylesheet" href="../../engine/slides.css">
+</head>
+<body>
+<div class="deck">
+
+<div class="slide slide--title is-active" data-slide>
+  <p class="eyebrow">Semana 00 — Pre-requisito</p>
+  <h1>Introduccion a Python, APIs y FastAPI</h1>
+  <p class="subtitle">De "un programa en mi PC" a "un backend en Internet"</p>
+  <p class="author">Ing. Eduardo Pimienta — Desarrollo Web II</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Que vamos a aprender?</h2>
+  <div class="flow">
+    <div class="flow-item">Python</div>
+    <div class="flow-item">HTTP</div>
+    <div class="flow-item">APIs</div>
+    <div class="flow-item">REST</div>
+    <div class="flow-item">FastAPI</div>
+  </div>
+  <p style="margin-top:16px">Al final sabras crear tu primera API funcional.</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Que es un programa?</h2>
+  <p>Una serie de instrucciones que una computadora ejecuta.</p>
+  <pre><code>print("Hola mundo")</code></pre>
+  <p>El programa recibe una instruccion y produce un resultado.</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Que es Python?</h2>
+  <p>El idioma que utilizaremos para darle instrucciones al computador.</p>
+  <pre><code>print("Hola mundo")       # Python
+Console.WriteLine(...)    # C#
+System.out.println(...)   # Java</code></pre>
+  <p>Python reduce el ruido sintactico.</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Variables y tipos</h2>
+  <pre><code>nombre = "Ana"       # str
+edad = 20            # int
+altura = 1.68        # float
+activo = True        # bool</code></pre>
+  <p>Python determina el tipo automaticamente (tipado dinamico).</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Diccionarios</h2>
+  <pre><code>estudiante = {
+    "nombre": "Ana",
+    "edad": 20
+}</code></pre>
+  <p>Clave → Valor. Muy parecido a JSON.</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Que es JSON?</h2>
+  <p>JavaScript Object Notation — formato para intercambiar datos.</p>
+  <div class="comparison">
+    <div><h3>Python</h3><pre><code>{"nombre": "Ana"}</code></pre></div>
+    <div><h3>JSON</h3><pre><code>{"nombre": "Ana"}</code></pre></div>
+  </div>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Funciones</h2>
+  <pre><code>def sumar(a, b):
+    return a + b
+
+print(sumar(10, 20))  # 30</code></pre>
+  <p>Una ruta de FastAPI es basicamente una funcion Python.</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Cliente y Servidor</h2>
+  <div class="flow">
+    <div class="flow-item">Cliente</div>
+    <div class="flow-item">Peticion</div>
+    <div class="flow-item">Servidor</div>
+    <div class="flow-item">Respuesta</div>
+  </div>
+  <p>El cliente solicita, el servidor responde.</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>HTTP — El protocolo</h2>
+  <p>HyperText Transfer Protocol — reglas para que cliente y servidor se comuniquen.</p>
+  <div class="flow">
+    <div class="flow-item">GET</div>
+    <div class="flow-item">POST</div>
+    <div class="flow-item">PUT</div>
+    <div class="flow-item">DELETE</div>
+  </div>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Metodos HTTP y CRUD</h2>
+  <table>
+    <tr><th>CRUD</th><th>HTTP</th><th>Accion</th></tr>
+    <tr><td>Create</td><td>POST</td><td>Crear</td></tr>
+    <tr><td>Read</td><td>GET</td><td>Consultar</td></tr>
+    <tr><td>Update</td><td>PUT</td><td>Actualizar</td></tr>
+    <tr><td>Delete</td><td>DELETE</td><td>Eliminar</td></tr>
+  </table>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Que es FastAPI?</h2>
+  <p>Un framework web moderno para construir APIs con Python.</p>
+  <div class="flow">
+    <div class="flow-item">Python</div>
+    <div class="flow-item">HTTP</div>
+    <div class="flow-item">Rutas</div>
+    <div class="flow-item">Validacion</div>
+    <div class="flow-item">JSON</div>
+    <div class="flow-item">Swagger</div>
+  </div>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Nuestra primera app</h2>
+  <pre><code>from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+def inicio():
+    return {"mensaje": "Hola mundo"}</code></pre>
+  <p>Cuando alguien haga GET a /, ejecuta inicio().</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Swagger UI</h2>
+  <p>FastAPI genera documentacion interactiva automaticamente.</p>
+  <pre><code>http://localhost:8000/docs</code></pre>
+  <ul>
+    <li>Ver endpoints</li>
+    <li>Probar endpoints</li>
+    <li>Enviar JSON</li>
+    <li>Ver respuestas</li>
+  </ul>
+</div>
+
+<div class="slide" data-slide>
+  <h2>El curso completo</h2>
+  <div class="flow">
+    <div class="flow-item">Python</div>
+    <div class="flow-item">HTTP</div>
+    <div class="flow-item">FastAPI</div>
+    <div class="flow-item">CRUD</div>
+    <div class="flow-item">BD</div>
+    <div class="flow-item">Arquitectura</div>
+  </div>
+  <p style="margin-top:16px">Pasaremos de pequenos programas a un backend completo.</p>
+</div>
+
+</div>
+<div class="controls">
+  <button id="prev">&#9664;</button>
+  <span id="counter">1 / 15</span>
+  <div id="dots"></div>
+  <button id="next">&#9654;</button>
+</div>
+<script src="../../engine/slides.js"></script>
+</body>
+</html>

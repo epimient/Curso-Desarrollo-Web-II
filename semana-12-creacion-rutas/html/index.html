@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Clase 12 - Creacion y manejo de rutas</title>
+<link rel="stylesheet" href="../../engine/slides.css">
+</head>
+<body>
+<div class="deck">
+
+<div class="slide slide--title is-active" data-slide>
+  <p class="eyebrow">Semana 12</p>
+  <h1>Creacion y manejo de rutas</h1>
+  <p class="subtitle">APIRouter, path params, query params, HTTP methods</p>
+  <p class="author">Ing. Eduardo Pimienta — Desarrollo Web II</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>APIRouter</h2>
+  <p>Organiza las rutas por modulos, como carpetas de archivos.</p>
+  <pre><code>router = APIRouter(prefix="/courses", tags=["courses"])
+
+@router.get("/")
+def list_courses():
+    return []</code></pre>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Path Parameters</h2>
+  <p>Datos que van directo en la URL:</p>
+  <pre><code>@router.get("/{course_id}")
+def get_course(course_id: int):
+    return {"id": course_id}</code></pre>
+  <p>/courses/5 → course_id = 5</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Query Parameters</h2>
+  <p>Datos despues del ? en la URL:</p>
+  <pre><code>@router.get("/")
+def list_courses(page: int = 1, limit: int = 10):
+    return {"page": page, "limit": limit}</code></pre>
+  <p>/courses?page=2&limit=5</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>HTTP Methods</h2>
+  <div class="flow">
+    <div class="flow-item">GET</div>
+    <div class="flow-item">POST</div>
+    <div class="flow-item">PUT</div>
+    <div class="flow-item">PATCH</div>
+    <div class="flow-item">DELETE</div>
+  </div>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Status Codes</h2>
+  <table>
+    <tr><th>Codigo</th><th>Significado</th><th>Uso</th></tr>
+    <tr><td>200</td><td>OK</td><td>GET, PUT exitoso</td></tr>
+    <tr><td>201</td><td>Created</td><td>POST exitoso</td></tr>
+    <tr><td>204</td><td>No Content</td><td>DELETE exitoso</td></tr>
+    <tr><td>404</td><td>Not Found</td><td>Recurso no encontrado</td></tr>
+  </table>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Resumen</h2>
+  <ul>
+    <li>APIRouter organiza las rutas por modulos</li>
+    <li>Path params van en la URL</li>
+    <li>Query params van despues del ?</li>
+    <li>Cada metodo HTTP tiene un proposito</li>
+    <li>Los status codes comunican el resultado</li>
+  </ul>
+</div>
+
+</div>
+<div class="controls">
+  <button id="prev">&#9664;</button>
+  <span id="counter">1 / 7</span>
+  <div id="dots"></div>
+  <button id="next">&#9654;</button>
+</div>
+<script src="../../engine/slides.js"></script>
+</body>
+</html>

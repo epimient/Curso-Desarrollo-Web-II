@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Clase 06 - Seleccion de un framework especifico</title>
+<link rel="stylesheet" href="../../engine/slides.css">
+</head>
+<body>
+<div class="deck">
+
+<div class="slide slide--title is-active" data-slide>
+  <p class="eyebrow">Semana 06</p>
+  <h1>Seleccion de un framework especifico</h1>
+  <p class="subtitle">Por que FastAPI para este curso</p>
+  <p class="author">Ing. Eduardo Pimienta — Desarrollo Web II</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Resumen: frameworks comparados</h2>
+  <table>
+    <tr><th>Framework</th><th>Tipo</th><th>Mejor para</th></tr>
+    <tr><td>Django</td><td>Full-stack</td><td>Apps completas, admin</td></tr>
+    <tr><td>Flask</td><td>Microframework</td><td>Apps pequenas, flexibles</td></tr>
+    <tr><td>Laravel</td><td>Full-stack</td><td>Apps web tradicionales</td></tr>
+    <tr><td><strong>FastAPI</strong></td><td><strong>API framework</strong></td><td><strong>APIs modernas, rapidas</strong></td></tr>
+  </table>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Por que FastAPI</h2>
+  <div class="flow">
+    <div class="flow-item">Rendimiento</div>
+    <div class="flow-item">APIs REST</div>
+    <div class="flow-item">Pydantic</div>
+    <div class="flow-item">Swagger auto</div>
+    <div class="flow-item">Async nativo</div>
+  </div>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Rendimiento</h2>
+  <p>FastAPI es uno de los frameworks mas rapidos de Python:</p>
+  <div class="comparison">
+    <div><h3>Flask</h3><p>~1,000 req/s</p></div>
+    <div><h3>FastAPI</h3><p>~12,000+ req/s</p></div>
+  </div>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Validacion con Pydantic</h2>
+  <pre><code>class CursoCreate(BaseModel):
+    nombre: str = Field(..., min_length=1)
+    creditos: int = Field(..., gt=0, le=10)</code></pre>
+  <p>Si alguien envia creditos: -5, FastAPI rechaza automaticamente.</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Documentacion automatica</h2>
+  <div class="grid-2">
+    <div>
+      <h3>Swagger UI</h3>
+      <pre><code>http://localhost:8000/docs</code></pre>
+    </div>
+    <div>
+      <h3>ReDoc</h3>
+      <pre><code>http://localhost:8000/redoc</code></pre>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Decision final</h2>
+  <p>FastAPI es la mejor opcion para el curso porque:</p>
+  <ul>
+    <li>Enfoque en APIs REST</li>
+    <li>Velocidad y modernidad</li>
+    <li>Documentacion automatica</li>
+    <li>Validacion con Pydantic</li>
+    <li>Soporte nativo para async</li>
+  </ul>
+</div>
+
+</div>
+<div class="controls">
+  <button id="prev">&#9664;</button>
+  <span id="counter">1 / 7</span>
+  <div id="dots"></div>
+  <button id="next">&#9654;</button>
+</div>
+<script src="../../engine/slides.js"></script>
+</body>
+</html>

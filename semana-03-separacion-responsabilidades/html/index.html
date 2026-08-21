@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Clase 03 - Separacion de responsabilidades</title>
+<link rel="stylesheet" href="../../engine/slides.css">
+</head>
+<body>
+<div class="deck">
+
+<div class="slide slide--title is-active" data-slide>
+  <p class="eyebrow">Semana 03</p>
+  <h1>Separacion de responsabilidades</h1>
+  <p class="subtitle">Por que importa y como se aplica en aplicaciones web</p>
+  <p class="author">Ing. Eduardo Pimienta — Desarrollo Web II</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>El problema</h2>
+  <p>Cuando todo esta junto en un solo archivo:</p>
+  <ul>
+    <li>Encontrar un bug es como buscar una aguja en un pajar</li>
+    <li>Cambiar algo puede romper cosas que no tenian que ver</li>
+    <li>Probar es dificil porque todo depende de todo</li>
+  </ul>
+</div>
+
+<div class="slide" data-slide>
+  <h2>SRP — Single Responsibility Principle</h2>
+  <p>Una clase, modulo o funcion debe tener <strong>una sola razon para cambiar</strong>.</p>
+  <p class="subtitle">Cada parte del codigo tiene un trabajo y solo un trabajo.</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Las tres capas</h2>
+  <div class="flow">
+    <div class="flow-item">Presentacion</div>
+    <div class="flow-item">Logica de negocio</div>
+    <div class="flow-item">Datos</div>
+  </div>
+  <p style="margin-top:16px">Cada capa tiene una responsabilidad distinta.</p>
+</div>
+
+<div class="slide" data-slide>
+  <h2>SIN separacion</h2>
+  <pre><code># TODO EN UN ARCHIVO -asi NO-
+@app.get("/courses")
+def get_courses():
+    db = SessionLocal()
+    courses = db.query(Course).all()
+    return [{"id": c.id, "name": c.name}
+            for c in courses]</code></pre>
+</div>
+
+<div class="slide" data-slide>
+  <h2>CON separacion</h2>
+  <div class="grid-2">
+    <div>
+      <h3>Modelo</h3>
+      <pre><code>class Course(Base):
+    __tablename__ = "courses"
+    id = Column(Integer, primary_key=True)
+    name = Column(String)</code></pre>
+    </div>
+    <div>
+      <h3>Servicio</h3>
+      <pre><code>def get_courses(db):
+    return db.query(Course).all()</code></pre>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-slide>
+  <h2>Beneficios</h2>
+  <ul>
+    <li>Cada archivo tiene UNA responsabilidad</li>
+    <li>Cambiar la BD no afecta los endpoints</li>
+    <li>Cambiar la respuesta no afecta la logica</li>
+    <li>El codigo es mas facil de leer, probar y mantener</li>
+  </ul>
+</div>
+
+</div>
+<div class="controls">
+  <button id="prev">&#9664;</button>
+  <span id="counter">1 / 7</span>
+  <div id="dots"></div>
+  <button id="next">&#9654;</button>
+</div>
+<script src="../../engine/slides.js"></script>
+</body>
+</html>
