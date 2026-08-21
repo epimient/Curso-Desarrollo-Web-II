@@ -90,9 +90,9 @@ def obtener_peliculas():
 
 @app.get("/peliculas/{id}")
 def obtener_pelicula(id: int):
-    for p in peliculas:
-        if p["id"] == id:
-            return p
+    for pelicula in peliculas:
+        if pelicula["id"] == id:
+            return pelicula
     return {"error": "Pelicula no encontrada"}
 ```
 
