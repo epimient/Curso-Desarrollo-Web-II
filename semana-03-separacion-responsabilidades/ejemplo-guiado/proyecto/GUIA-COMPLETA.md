@@ -16,6 +16,7 @@
 7. [El flujo completo](#7--el-flujo-completo)
 8. [Cómo ejecutar y probar](#8--cómo-ejecutar-y-probar)
 9. [Errores comunes y cómo solucionarlos](#9--errores-comunes-y-cómo-solucionarlos)
+10. [Type Hints en Python](#10--type-hints-en-python)
 
 ---
 
@@ -88,14 +89,106 @@ Python lanza:
 ModuleNotFoundError: No module named 'app'
 ```
 
-### Analogía
+### Analogía 1: La placa en la puerta
 
 Piensa en `__init__.py` como una **placa en la puerta** de una oficina:
 
 - Con la placa: "Esta oficina existe, puedes entrar"
 - Sin la placa: "No sé qué es este lugar"
 
-**Regla simple:** Si una carpeta contiene archivos `.py` que se importan, necesitas `__init__.py`.
+### Analogía 2: El edificio de oficinas
+
+Cada **carpeta** es un **edificio**. Cada **archivo `.py`** es una **oficina**. Los `__init__.py` son las **placas en la entrada**.
+
+```
+Un visitante quiere llegar a la oficina "equipo.py"
+dentro del edificio "schemas".
+
+Con placa:   from app.schemas.equipo import EquipoCreate   ✅
+Sin placa:   from app.schemas.equipo import EquipoCreate   ❌ "no existe ese edificio"
+```
+
+La placa no hace nada útil por sí sola — solo dice **"este edificio existe y se puede visitar"**.
+
+### Analogía 3: La agenda telefónica
+
+Python quiere **llamar por teléfono** a un archivo:
+
+```
+from app.schemas.equipo import EquipoCreate
+
+Python marca:  "app" → "schemas" → "equipo"
+                │         │          └── contesto yo (el archivo)
+                │         └── ¿existe? → necesita AGENDA __init__.py
+                └── ¿existe? → necesita AGENDA __init__.py
+```
+
+`__init__.py` es la **agenda telefónica** de Python: sin el número, la llamada no conecta.
+
+### Resumen en 3 frases
+
+> **1.** `__init__.py` le dice a Python: "esta carpeta es un paquete, puedes importar sus archivos".
+>
+> **2.** El archivo **existe pero está vacío** — puedes abrirlo y no verás nada.
+>
+> **3.** Si una carpeta con código Python **no lo tiene**, los imports fallan con `ModuleNotFoundError`.
+
+### Truco para recordar
+
+> **"Carpeta que se importa → necesita placa. Carpeta que no se importa → no le pongas placa."**
+
+Regla práctica:
+- Contiene `.py` que otro archivo importa → **sí** `__init__.py`
+- Contiene solo HTML, textos, imágenes o PDFs → **no**
+
+### ¿Los tengo que crear yo?
+
+**Sí.** Tú como programador **debes crearlos**. Son archivos vacíos — no tienen código — pero **deben existir**.
+
+Cómof crearlos:
+
+```bash
+# Linux / macOS
+touch app/__init__.py
+touch app/routers/__init__.py
+touch app/schemas/__init__.py
+touch app/services/__init__.py
+```
+
+Windows:
+
+```bash
+type nul > app\__init__.py
+type nul > app\routers\__init__.py
+type nul > app\schemas\__init__.py
+type nul > app\services\__init__.py
+```
+
+### ¿Todas las carpetas de la API necesitan uno?
+
+**No.** Solo las que contienen archivos `.py` que se **importan desde otro lugar**.
+
+| ¿Contiene `.py` que se importa? | ¿Necesita `__init__.py`? |
+|----------------------------------|--------------------------|
+| `app/schemas/` | Sí — `equipo.py` se importa como `app.schemas.equipo` |
+| `app/services/` | Sí — `equipo_service.py` se importa como `app.services.equipo_service` |
+| `app/routers/` | Sí — `equipos.py` se importa como `app.routers.equipos` |
+| `html/` | No — solo tiene `index.html`, no se importa Python |
+| `ejemplo-guiado/` | No — solo tiene archivos `.md` y subcarpetas de código |
+
+Si mañana creas `app/models/` para base de datos → **sí**, necesitas `__init__.py`.
+Si creas `app/docs/` para documentación markdown → **no**, no lo necesitas.
+
+### Pregunta de confirmación
+
+> *¿Dónde NO hace falta `__init__.py`?*
+>
+> A) `app/schemas/`
+> B) `app/html/` ← **Correcta**: no hay Python importable
+> C) `app/services/`
+> D) `app/routers/`
+
+**Regla de oro:** Si no lo sabes con certeza, revísalo: si la carpeta tiene `.py` que otros archivos importan → créalo.
 
 ---
 
@@ -129,6 +222,45 @@ class EquipoCreate(BaseModel):
 | `Field(...)` | Configuración del campo |
 | `min_length=3` | Mínimo 3 caracteres |
 | `max_length=80` | Máximo 80 caracteres |
+
+#### Los tres puntos `...`: ¿qué significan?
+
+Los tres puntos `...` (Ellipsis) significan: **"este campo es obligatorio"**.
+
+```python
+nombre: str = Field(..., min_length=3, max_length=80)
+#              ^^^
+#            "NO hay valor por defecto, el cliente DEBE enviarlo"
+```
+
+| Sintaxis | Significado |
+|----------|-------------|
+| `Field(...)` | **Obligatorio** — el cliente debe enviarlo, no tiene valor por defecto |
+| `Field("Valor")` | Opcional — si no lo envían, usa "Valor" |
+| `Field(0)` | Opcional — si no lo envían, usa 0 |
+| `nombre: str` (sin Field) | También es obligatorio (el `...` es implícito) |
+
+**Analogía:** Es como un formulario de registro:
+
+```
+Nombre:   ____________   ← Campo vacío = "..." = el usuario DEBE llenarlo
+```
+
+vs.
+
+```
+Estado civil: [Soltero]   ← Valor por defecto = el usuario puede dejarlo así
+```
+
+**¿Qué pasa si el cliente no envía `nombre`?**
+
+Pydantic devuelve error 422:
+
+```json
+{"detail": [{"loc": ["body", "nombre"], "msg": "Field required", ...}]}
+```
+
+> **Dato extra:** En Python puro, `...` es el valor `Ellipsis`. Pero en Pydantic se usa **únicamente** como marcador de "aquí va el valor del cliente, yo no pongo default".
 
 **¿Qué pasa si el cliente envía `{"nombre": "AB"}`?**
 
@@ -362,6 +494,114 @@ def post_equipo(equipo: EquipoCreate):
 5. Si pasa → llama a `crear_equipo(equipo)`
 
 **El router es delgado.** No hay lógica de negocio. Solo recibe y delega.
+
+### ¿De dónde viene el parámetro `equipo`?
+
+Cuando un cliente hace `POST /equipos/` con este JSON:
+
+```json
+{
+  "nombre": "Arduino UNO",
+  "categoria": "Microcontrolador"
+}
+```
+
+FastAPI hace **automáticamente** esto por ti:
+
+```python
+# 1. Recibe el texto JSON de la red
+# 2. Lo convierte a objeto EquipoCreate validando con Pydantic
+equipo = EquipoCreate(nombre="Arduino UNO", categoria="Microcontrolador")
+
+# 3. Y lo mete en tu función
+post_equipo(equipo=equipo)
+```
+
+Tu función **NO recibe texto**. Recibe un objeto con atributos:
+
+```python
+def post_equipo(equipo: EquipoCreate):
+    equipo.nombre      # "Arduino UNO"     (accede como objeto)
+    equipo.categoria   # "Microcontrolador"
+    return crear_equipo(equipo)
+```
+
+**Analogía:** Tu función es un **chef**:
+
+```
+Cliente hace pedido → JSON crudo (una hoja de papel)
+FastAPI es el mesero → lee el pedido, valida que "esté bien escrito"
+Tu función es el chef → recibe EL PEDIDO YA ORDENADO (objeto EquipoCreate)
+```
+
+El chef no lee el papel crudo — el mesero (FastAPI) ya lo interpretó y lo sirvió ordenado.
+
+### Tipos de parámetros: de dónde viene cada uno
+
+```python
+def post_equipo(
+    equipo: EquipoCreate,      # ← Body JSON (cuerpo de la petición)
+    categoria: str,            # ← Query param (?categoria=Sensor)
+    equipo_id: int             # ← Path param (/equipos/5)
+):
+```
+
+| Tipo del parámetro | De dónde viene | Ejemplo |
+|--------------------|----------------|---------|
+| Modelo Pydantic (`EquipoCreate`) | **Body** (cuerpo del JSON) | POST con JSON |
+| `str`, `int`, `bool` simple | **Query** (después de `?`) | `?categoria=Sensor` |
+| Coincide con ruta `{equipo_id}` | **Path** (en la URL) | `/equipos/5` |
+
+### La firma es un contrato de validación
+
+Con `equipo: EquipoCreate` le estás diciendo a FastAPI:
+
+> "El body de esta petición debe validarse y convertirse al modelo `EquipoCreate`"
+
+La conexión entre los archivos:
+
+```
+routers/equipos.py              schemas/equipo.py
+┌───────────────────────────┐  ┌──────────────────────────┐
+│ equipo: EquipoCreate       │──▶│ class EquipoCreate:      │
+│                           │  │   nombre: str (3-80)     │
+└───────────────────────────┘  │   categoria: str (3-50)  │
+   "usa este modelo"           └──────────────────────────┘
+   (importado arriba)          "aquí están las reglas"
+                               (aquí está la definición)
+```
+
+La **firma de tu función es un CONTRATO**: "Para llamar a `post_equipo`, el body debe cumplir las reglas de `EquipoCreate`."
+
+### ¿Por qué parece que se valida dos veces?
+
+Ves `EquipoCreate` en el router **y** en el service:
+
+```python
+# router — ¿valida?
+def post_equipo(equipo: EquipoCreate):    # ← AQUÍ se valida (1 vez)
+
+# service — ¿valida?
+def crear_equipo(equipo: EquipoCreate):   # ← NO valida, es documentación
+```
+
+**En realidad solo se valida UNA vez**, en el router.
+
+| Capa | ¿Valida? | Por qué lo parece |
+|------|----------|-------------------|
+| Router (`equipo: EquipoCreate`) | **SÍ** — aquí se corre la validación | Es donde FastAPI construye el objeto |
+| Service (`equipo: EquipoCreate`) | **NO** — solo type hint | Es solo documentación para el programador |
+
+**Analogía:** El router es el **guardia de seguridad** de la entrada:
+
+```
+Router (guardia):  "Muéstrame tu identificación" → Pydantic la revisa
+Service (técnico): "Este es el visitante ya aprobado" → trabaja con confianza
+```
+
+El service **no revisa nada** porque asume que el guardia ya lo hizo. El `EquipoCreate` que escribe en la firma es solo el **uniforme** que muestra: "yo trabajo con visitantes aprobados".
+
+**Punto clave:** Nunca llamas tú a esa función. FastAPI la llama solo cuando llega una petición `POST /equipos/`, y **si el JSON tiene datos inválidos, tu función ni siquiera se ejecuta** — Pydantic lanza error 422 antes.
 
 ---
 
@@ -611,6 +851,92 @@ from fastapi import APIRouter, status    # ← Agrega status
 
 ---
 
+## 10 · Type Hints en Python
+
+### ¿Qué es un type hint?
+
+Un type hint es una **anotación de tipo** que le dice al programador (y a herramientas como PyCharm, VS Code o mypy) qué tipo de dato se espera en una variable, parámetro o función.
+
+```python
+nombre: str = "Arduino UNO"          # ← "nombre es un string"
+edad: int = 25                       # ← "edad es un entero"
+activo: bool = True                  # ← "activo es un booleano"
+equipos: list[dict] = []             # ← "equipos es una lista de diccionarios"
+```
+
+### Ejemplos en nuestro proyecto
+
+```python
+# Parámetro: "equipo debe ser un objeto EquipoCreate"
+def crear_equipo(equipo: EquipoCreate) -> dict:
+    ...
+
+# Return: "esta función devuelve una lista de diccionarios"
+def listar_equipos() -> list[dict]:
+    return _equipos
+
+# Variable: "es una lista de diccionarios"
+_equipos: list[dict] = []
+```
+
+### La diferencia clave: type hint ≠ validación
+
+```python
+def saludar(nombre: str):
+    print(f"Hola {nombre}")
+
+saludar(123)      # ← Funciona, Python no lanza error
+saludar(True)     # ← Funciona también
+```
+
+**Python NO valida los type hints en tiempo de ejecución.** Son "adornos" — documentos para el programador.
+
+| Anotación | ¿Qué hace Python en runtime? |
+|-----------|------------------------------|
+| `nombre: str` | Nada — solo recuerda el nombre para el editor |
+| `def f(x: int) -> str:` | Nada — no verifica que x sea int ni que devuelvas str |
+
+**¿Por qué existen entonces?**
+
+1. **Documentación** — Sabes qué tipo de dato esperas sin leer todo el código
+2. **Autocompletado** — El editor te sugiere `.nombre`, `.categoria`, etc.
+3. **Legibilidad** — Otro programador entiende rápido qué hace la función
+4. **Detección de errores** — Herramientas como `mypy` o `Pylance` detectan inconsistencias **antes** de ejecutar
+
+### Type hints en Pydantic (sí validan)
+
+Pydantic **sí usa** los type hints para validar:
+
+```python
+class EquipoCreate(BaseModel):
+    nombre: str           # ← Pydantic SÍ valida: "nombre debe ser str"
+    categoria: str        # ← Pydantic SÍ valida: "categoria debe ser str"
+```
+
+¿Por qué Pydantic sí y Python no? Porque Pydantic **reescribe el código** internamente: lee las anotaciones y genera código de validación automática.
+
+### Conexión con el service
+
+```python
+# service
+def crear_equipo(equipo: EquipoCreate) -> dict:
+    ...
+```
+
+El `EquipoCreate` aquí **no valida**. Solo documenta: "esta función recibe objetos EquipoCreate". Por eso no hay "doble validación" — el service confía en que el router ya validó.
+
+### Resumen
+
+| Concepto | ¿Valida? | Para qué sirve |
+|----------|----------|----------------|
+| Type hints de Python (`nombre: str`) | No | Documentación, autocompletado, legibilidad |
+| Pydantic (`class EquipoCreate(BaseModel)`) | Sí | Validación automática de datos |
+| FastAPI + Pydantic (`equipo: EquipoCreate`) | Sí (solo en el router) | Convierte JSON a objeto validado |
+
+> **Regla:** Los type hints son **para humanos y herramientas**. Pydantic es **para datos**. FastAPI usa Pydantic para que los type hints **sí validen** en el punto de entrada.
+
+---
+
 ## Resumen
 
 | Concepto | Archivo | Función |
@@ -620,6 +946,7 @@ from fastapi import APIRouter, status    # ← Agrega status
 | Service | `services/equipo_service.py` | Contiene lógica de negocio |
 | Router | `routers/equipos.py` | Recibe HTTP, delega al service |
 | Main | `main.py` | Crea la app y registra routers |
+| Type Hints | En cualquier `.py` | Anotaciones de tipo para documentación y autocompletado |
 
 ### Flujo
 
