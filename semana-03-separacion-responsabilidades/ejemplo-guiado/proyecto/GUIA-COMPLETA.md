@@ -387,6 +387,102 @@ def crear_equipo(equipo: EquipoCreate) -> dict:
 
 Para que "Arduino UNO", "arduino uno" y "ARDUINO UNO" se consideren **iguales**. Sin esto, podrías crear duplicados con diferente capitalización.
 
+### ¿Por qué `any()` y no un `if`?
+
+#### ¿De dónde sale la `e`?
+
+La `e` **la inventas tú** — es la variable del bucle:
+
+```python
+for e in _equipos:     # "para cada e (equipo) dentro de la lista"
+```
+
+Es igual que en `for i in range(10)` donde la `i` la pones tú. Aquí la `e` representa **cada diccionario** de la lista `_equipos`:
+
+```python
+_equipos = [
+    {"id": 1, "nombre": "Arduino UNO",    "categoria": "Microcontrolador", "disponible": True},
+    {"id": 2, "nombre": "Sensor DHT22",  "categoria": "Sensor",           "disponible": True},
+]
+```
+
+Por eso se accede con `e["nombre"]` (como a un diccionario), no con `e.nombre`.
+
+#### ¿Qué es `any()`?
+
+Una **función nativa** de Python — siempre existe, no necesitas importarla.
+
+Recibe una lista de valores booleanos y devuelve:
+
+| Si tiene... | Devuelve |
+|-------------|----------|
+| Todos `False` | `False` |
+| **Al menos un** `True` | `True` |
+
+```python
+any([False, False, False])  # → False
+any([False, True, False])   # → True
+```
+
+#### ¿Qué es la estructura `... for e in _equipos`?
+
+Es una **expresión generadora**: construye una lista de `True`/`False` sobre la marcha.
+
+Paso a paso con 2 equipos en `_equipos`:
+
+```python
+# Turno 1:  e = {"nombre": "Arduino UNO", ...}
+#           "arduino uno" == "arduino uno"   → True
+
+# Turno 2:  e = {"nombre": "Sensor DHT22", ...}
+#           "sensor dht22" == "arduino uno"  → False
+
+# any([True, False]) → True  → existe = True  → error 400
+```
+
+Si **ninguno** fuera igual (turno 1 = False, turno 2 = False):
+
+```python
+any([False, False]) → False → no hay duplicado → se crea el equipo
+```
+
+#### ¿Por qué `any()` y no un `for` + `if`?
+
+Las dos formas son **equivalentes**. Mira la diferencia:
+
+**Versión A — con `any()` (la que usamos):**
+
+```python
+existe = any(
+    e["nombre"].lower() == equipo.nombre.lower() for e in _equipos
+)
+if existe:
+    raise HTTPException(400, "Ya existe un equipo con ese nombre")
+```
+
+**Versión B — con bucle `for` + `if` (también funciona):**
+
+```python
+existe = False
+for e in _equipos:
+    if e["nombre"].lower() == equipo.nombre.lower():
+        existe = True
+        break              # ← hay que recordar "parar"
+if existe:
+    raise HTTPException(400, "Ya existe un equipo con ese nombre")
+```
+
+| Criterio | `any()` | `for` + `if` |
+|----------|---------|--------------|
+| Líneas de código | 1 | 5 |
+| Intención | Dice "¿existe alguno?" directamente | Repites la lógica manual |
+| Error de novato | Menos probable | Fácil olvidar `break` |
+| Estilo | Elegante pero más abstracto | Más explícito pero verboso |
+
+> **Conclusión:** `any()` es como preguntar *"¿hay alguno igual?"* en una sola línea. El bucle `for` + `if` es como revisar **uno por uno** y apuntar en una libreta. Funcionan igual, pero `any()` es más legible una vez que entiendes la sintaxis.
+
+**Resumen:** la `e` la inventas tú (variable del bucle), `any()` es una función nativa de Python, y la estructura `for e in _equipos` es un generador que construye `True`/`False` por cada equipo y luego `any()` revisa si hubo al menos un `True`.
+
 ---
 
 ```python
