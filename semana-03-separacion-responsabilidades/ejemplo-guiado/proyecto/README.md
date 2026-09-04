@@ -147,6 +147,14 @@ Abrir en el navegador:
 
 ## Endpoints
 
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/equipos/` | Listar todos los equipos |
+| GET | `/equipos/{equipo_id}` | Obtener un equipo por ID |
+| POST | `/equipos/` | Crear un equipo nuevo |
+| PUT | `/equipos/{equipo_id}` | Actualizar un equipo |
+| DELETE | `/equipos/{equipo_id}` | Eliminar un equipo |
+
 ### `GET /equipos/`
 
 Devuelve todos los equipos almacenados.
@@ -163,6 +171,25 @@ Devuelve todos los equipos almacenados.
   }
 ]
 ```
+
+### `GET /equipos/{equipo_id}`
+
+Devuelve un equipo específico por su ID.
+
+**Ejemplo:** `GET /equipos/1`
+
+**Respuesta 200:**
+
+```json
+{
+  "id": 1,
+  "nombre": "Arduino UNO",
+  "categoria": "Microcontrolador",
+  "disponible": true
+}
+```
+
+**Errores:** 404 si el ID no existe.
 
 ### `POST /equipos/`
 
@@ -194,6 +221,59 @@ Crea un nuevo equipo.
 |--------|-------|
 | 422 | Datos inválidos (nombre < 3 chars, categoría < 3 chars) |
 | 400 | Ya existe un equipo con ese nombre (ignora mayúsculas) |
+
+### `PUT /equipos/{equipo_id}`
+
+Actualiza nombre y categoría de un equipo existente.
+
+**Ejemplo:** `PUT /equipos/1`
+
+**Request body:**
+
+```json
+{
+  "nombre": "Arduino Mega",
+  "categoria": "Microcontrolador"
+}
+```
+
+**Respuesta 200:**
+
+```json
+{
+  "id": 1,
+  "nombre": "Arduino Mega",
+  "categoria": "Microcontrolador",
+  "disponible": true
+}
+```
+
+**Errores:**
+
+| Código | Causa |
+|--------|-------|
+| 404 | El ID no existe |
+| 400 | Ya existe **otro** equipo con ese nombre |
+| 422 | Datos inválidos |
+
+### `DELETE /equipos/{equipo_id}`
+
+Elimina un equipo y lo devuelve.
+
+**Ejemplo:** `DELETE /equipos/1`
+
+**Respuesta 200:**
+
+```json
+{
+  "id": 1,
+  "nombre": "Arduino UNO",
+  "categoria": "Microcontrolador",
+  "disponible": true
+}
+```
+
+**Errores:** 404 si el ID no existe.
 
 ---
 

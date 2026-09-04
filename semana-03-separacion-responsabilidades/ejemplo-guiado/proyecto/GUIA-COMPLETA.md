@@ -17,6 +17,7 @@
 8. [Cómo ejecutar y probar](#8--cómo-ejecutar-y-probar)
 9. [Errores comunes y cómo solucionarlos](#9--errores-comunes-y-cómo-solucionarlos)
 10. [Type Hints en Python](#10--type-hints-en-python)
+11. [CRUD completo](#11--crud-completo)
 
 ---
 
@@ -1033,6 +1034,160 @@ El `EquipoCreate` aquí **no valida**. Solo documenta: "esta función recibe obj
 
 ---
 
+## 11 · CRUD completo
+
+### ¿Qué es CRUD?
+
+CRUD son las **4 operaciones básicas** que se pueden hacer con cualquier recurso:
+
+| Operación | HTTP | Qué hace |
+|-----------|------|----------|
+| **C**reate | POST | Crear un equipo nuevo |
+| **R**ead | GET | Leer equipos (lista o uno por ID) |
+| **U**pdate | PUT | Actualizar un equipo existente |
+| **D**elete | DELETE | Eliminar un equipo |
+
+### Endpoints finales
+
+| Método | Ruta | Función |
+|--------|------|---------|
+| `GET` | `/equipos/` | Listar todos |
+| `GET` | `/equipos/{equipo_id}` | Obtener uno por ID |
+| `POST` | `/equipos/` | Crear nuevo |
+| `PUT` | `/equipos/{equipo_id}` | Actualizar |
+| `DELETE` | `/equipos/{equipo_id}` | Eliminar |
+
+### Nuevo concepto: Path Parameters
+
+Cuando pones `{equipo_id}` en la ruta, FastAPI extrae ese valor y lo convierte al tipo que indiques en la función:
+
+```python
+@router.get("/{equipo_id}", response_model=EquipoResponse)
+def get_equipo(equipo_id: int):       # ← FastAPI convierte el string "1" a int
+    return obtener_equipo(equipo_id)   #    Si no es número → error 422
+```
+
+**Ruta:** `GET /equipos/1` → FastAPI ve `1` → lo pasa como `equipo_id: int = 1`
+
+**Error:** `GET /equipos/abc` → FastAPI ve `abc` → no puede convertir a int → error 422
+
+### Nuevo concepto: HTTP 404
+
+Cuando el ID no existe en la lista, el service lanza un error 404:
+
+```python
+def obtener_equipo(equipo_id: int) -> dict:
+    for e in _equipos:
+        if e["id"] == equipo_id:
+            return e
+    raise HTTPException(           # ← Si el bucle termina sin encontrar
+        status_code=404,           #    "Equipo no encontrado"
+        detail="Equipo no encontrado",
+    )
+```
+
+El 404 significa: **"El recurso no existe"**. Es diferente al 422 (datos inválidos) y al 400 (error de negocio).
+
+### GET por ID — `obtener_equipo()`
+
+```python
+def obtener_equipo(equipo_id: int) -> dict:
+    for e in _equipos:
+        if e["id"] == equipo_id:
+            return e
+    raise HTTPException(404, "Equipo no encontrado")
+```
+
+**Qué hace:** Recorre la lista y devuelve el equipo cuyo `id` coincida. Si ninguno coincide, lanza 404.
+
+**¿Por qué un `for` y no `any()`?** Porque aquí necesitamos **devolver el equipo entero**, no solo verificar si existe. `any()` solo dice True/False.
+
+### PUT — `actualizar_equipo()`
+
+```python
+def actualizar_equipo(equipo_id: int, datos: EquipoCreate) -> dict:
+    for i, e in enumerate(_equipos):
+        if e["id"] == equipo_id:
+            duplicado = any(
+                e2["nombre"].lower() == datos.nombre.lower()
+                and e2["id"] != equipo_id          # ← ¡Excluir el equipo actual!
+                for e2 in _equipos
+            )
+            if duplicado:
+                raise HTTPException(400, "Ya existe otro equipo con ese nombre")
+            _equipos[i]["nombre"] = datos.nombre
+            _equipos[i]["categoria"] = datos.categoria
+            return _equipos[i]
+    raise HTTPException(404, "Equipo no encontrado")
+```
+
+**Detalle importante:** La condición `and e2["id"] != equipo_id` **excluye el equipo que se está editando**. Sin esto, si intentas cambiar "Arduino UNO" a "Arduino UNO" (sin cambiar nada), el `any()` siempre encontraría una coincida y daría error.
+
+**¿Qué es `enumerate()`?** Una función que devuelve **índice + valor** en cada vuelta:
+
+```python
+for i, e in enumerate(_equipos):
+    # i = 0, 1, 2... (posición en la lista)
+    # e = {"id": 1, "nombre": "Arduino UNO", ...} (el equipo)
+```
+
+Esto permite modificar `_equipos[i]` directamente.
+
+### DELETE — `eliminar_equipo()`
+
+```python
+def eliminar_equipo(equipo_id: int) -> dict:
+    for i, e in enumerate(_equipos):
+        if e["id"] == equipo_id:
+            return _equipos.pop(i)    # ← pop() quita y devuelve el elemento
+    raise HTTPException(404, "Equipo no encontrado")
+```
+
+**¿Qué hace `pop(i)`?** Quita el elemento en la posición `i` de la lista **y lo devuelve**. La lista queda más corta y el cliente recibe el equipo eliminado.
+
+### Router: CRUD completo
+
+```python
+@router.get("/{equipo_id}", response_model=EquipoResponse)
+def get_equipo(equipo_id: int):
+    return obtener_equipo(equipo_id)
+
+@router.put("/{equipo_id}", response_model=EquipoResponse)
+def put_equipo(equipo_id: int, equipo: EquipoCreate):
+    return actualizar_equipo(equipo_id, equipo)
+
+@router.delete("/{equipo_id}", response_model=EquipoResponse)
+def delete_equipo(equipo_id: int):
+    return eliminar_equipo(equipo_id)
+```
+
+**Nota:** El router sigue siendo delgado — solo llama al service. Toda la lógica está en `equipo_service.py`.
+
+### Orden de los endpoints: importa
+
+```python
+@router.get("/")              # ← Lista (sin parámetro)
+@router.get("/{equipo_id}")   # ← Uno por ID (con parámetro)
+```
+
+**¿Por qué el `/` primero?** Si `/equipos/{equipo_id}` estuviera primero, FastAPI intentaría interpretar "equipos" como un `equipo_id` y todo saldría mal.
+
+**Regla:** Rutas fijas (`/`) siempre van **antes** que rutas con parámetros (`/{id}`).
+
+### Resumen del CRUD
+
+| Concepto | Qué introduce |
+|----------|---------------|
+| `{equipo_id}` | Path parameter — extrae el ID de la URL |
+| `: int` | FastAPI convierte string a entero (error 422 si falla) |
+| `HTTPException(404, ...)` | "El recurso no existe" |
+| `enumerate()` | Índice + valor para modificar la lista |
+| `.pop(i)` | Quitar y devolver un elemento |
+| `and e2["id"] != equipo_id` | Excluir el equipo actual en PUT |
+| **Orden de rutas** | Rutas fijas antes que rutas con parámetros |
+
+---
+
 ## Resumen
 
 | Concepto | Archivo | Función |
@@ -1043,6 +1198,7 @@ El `EquipoCreate` aquí **no valida**. Solo documenta: "esta función recibe obj
 | Router | `routers/equipos.py` | Recibe HTTP, delega al service |
 | Main | `main.py` | Crea la app y registra routers |
 | Type Hints | En cualquier `.py` | Anotaciones de tipo para documentación y autocompletado |
+| CRUD | Router + Service | Crear, leer, actualizar, eliminar |
 
 ### Flujo
 
