@@ -1214,4 +1214,7 @@ Cliente → Router → Schema → Service → Memoria → Response → Cliente
 
 ---
 
-**Guía creada para el curso de Desarrollo Web II — Ing. Eduardo Pimienta**
+**Guía creada para el curso de Desarrollo Web II — Ing. Eduardo Pimienta**  _f
+
+
+

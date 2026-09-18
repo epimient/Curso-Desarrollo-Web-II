@@ -12,7 +12,7 @@ from app.services.equipo_service import (
 router = APIRouter(prefix="/equipos", tags=["Equipos"])
 
 
-@router.get("/", response_model=list[EquipoResponse])
+@router.get("/", response_m     odel=list[EquipoResponse])
 def get_equipos():
     return listar_equipos()
 
